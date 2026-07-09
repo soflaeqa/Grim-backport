@@ -8,9 +8,19 @@ import org.jetbrains.annotations.NotNull;
 /**
  * Payload wrapper for serverbound {@code MC|BEdit} and {@code MC|BSign}, replaced by the {@link WrapperPlayClientEditBook EDIT_BOOK} packet in 1.13
  */
-public record PayloadBookEdit(@NotNull ItemStack itemStack) implements Payload {
+public final class PayloadBookEdit implements Payload {
+    private final @NotNull ItemStack itemStack;
+
+    public PayloadBookEdit(@NotNull ItemStack itemStack) {
+        this.itemStack = itemStack;
+    }
+
     public PayloadBookEdit(byte[] data) {
         this(Payload.wrapper(data).readItemStack());
+    }
+
+    public @NotNull ItemStack itemStack() {
+        return itemStack;
     }
 
     @Override

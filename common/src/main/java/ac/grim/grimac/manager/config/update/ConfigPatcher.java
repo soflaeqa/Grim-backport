@@ -4,7 +4,13 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -14,8 +20,7 @@ public final class ConfigPatcher {
     private final List<String> lines;
     private final Map<String, NodePosition> locationMap;
 
-    // ... (formatValue and YAML_KEYWORDS/SPECIAL_CHARS constants are unchanged) ...
-    private static final Set<String> YAML_KEYWORDS_TO_QUOTE = new HashSet<>(Arrays.asList(
+    private static final Set<String> YAML_KEYWORDS_TO_QUOTE = new HashSet<String>(Arrays.asList(
             "y", "Y", "yes", "Yes", "YES", "n", "N", "no", "No", "NO",
             "true", "True", "TRUE", "false", "False", "FALSE",
             "on", "On", "ON", "off", "Off", "OFF",
@@ -26,7 +31,7 @@ public final class ConfigPatcher {
     public ConfigPatcher(File configFile) throws IOException {
         this.file = configFile;
         this.lines = Files.readAllLines(configFile.toPath(), StandardCharsets.UTF_8);
-        this.locationMap = new HashMap<>();
+        this.locationMap = new HashMap<String, NodePosition>();
         mapFile();
     }
 
@@ -47,7 +52,23 @@ public final class ConfigPatcher {
      * so list-block replacements at low line numbers don't invalidate the
      * cached positions of changes at higher line numbers.
      */
-    public record PendingChange(NodePosition position, Object value) implements Comparable<PendingChange> {
+    public static final class PendingChange implements Comparable<PendingChange> {
+        private final NodePosition position;
+        private final Object value;
+
+        public PendingChange(NodePosition position, Object value) {
+            this.position = position;
+            this.value = value;
+        }
+
+        public NodePosition position() {
+            return position;
+        }
+
+        public Object value() {
+            return value;
+        }
+
         @Override
         public int compareTo(PendingChange other) {
             return Integer.compare(other.position.lineIndex(), this.position.lineIndex());
@@ -55,8 +76,8 @@ public final class ConfigPatcher {
     }
 
     private void mapFile() {
-        List<String> pathStack = new ArrayList<>();
-        List<Integer> indentStack = new ArrayList<>();
+        List<String> pathStack = new ArrayList<String>();
+        List<Integer> indentStack = new ArrayList<Integer>();
         Pattern keyPattern = Pattern.compile("^(\\s*)([^#:]+):(.*)");
 
         for (int i = 0; i < lines.size(); i++) {
@@ -72,37 +93,36 @@ public final class ConfigPatcher {
                 }
                 pathStack.add(key);
                 indentStack.add(currentIndent);
-                String currentPath = String.join(".", pathStack);
+                String currentPath = join(pathStack, ".");
                 locationMap.put(currentPath, new NodePosition(i, currentIndent));
             }
         }
     }
 
     private void replaceScalarValue(NodePosition position, Object value) {
-        String line = lines.get(position.lineIndex);
+        String line = lines.get(position.lineIndex());
         String valueStr = formatValue(value);
         Pattern linePattern = Pattern.compile("^(\\s*[^:]+:\\s*)(.*?)(\\s*#.*)?$");
         Matcher matcher = linePattern.matcher(line);
         if (matcher.matches()) {
-            lines.set(position.lineIndex, matcher.group(1) + valueStr + (matcher.group(3) != null ? matcher.group(3) : ""));
+            lines.set(position.lineIndex(), matcher.group(1) + valueStr + (matcher.group(3) != null ? matcher.group(3) : ""));
         }
     }
 
     private void replaceListBlock(NodePosition keyPosition, List<?> newList) {
-        // If the key has an inline list on its own line (e.g. `chain: [a, b]`),
-        // strip the inline value off the line first so it doesn't co-exist with
-        // the block-list items we're about to insert below.
-        scrubInlineListFromKeyLine(keyPosition.lineIndex);
+        scrubInlineListFromKeyLine(keyPosition.lineIndex());
 
-        int blockStartLine = -1, blockEndLine = keyPosition.lineIndex + 1, listIndent = -1;
-        for (int i = keyPosition.lineIndex + 1; i < lines.size(); i++) {
+        int blockStartLine = -1;
+        int blockEndLine = keyPosition.lineIndex() + 1;
+        int listIndent = -1;
+        for (int i = keyPosition.lineIndex() + 1; i < lines.size(); i++) {
             String line = lines.get(i);
             if (line.trim().isEmpty() || line.trim().startsWith("#")) {
-                if (blockStartLine != -1) blockEndLine = i + 1; // Include comments/blank lines within the block
+                if (blockStartLine != -1) blockEndLine = i + 1;
                 continue;
             }
             int currentIndent = getIndentation(line);
-            if (currentIndent <= keyPosition.indent) {
+            if (currentIndent <= keyPosition.indent()) {
                 blockEndLine = i;
                 break;
             }
@@ -115,30 +135,30 @@ public final class ConfigPatcher {
             }
         }
         if (blockStartLine == -1) {
-            blockStartLine = keyPosition.lineIndex + 1;
+            blockStartLine = keyPosition.lineIndex() + 1;
             blockEndLine = blockStartLine;
-            listIndent = keyPosition.indent + 2;
+            listIndent = keyPosition.indent() + 2;
         }
         String newBlock = generateListBlock(newList, listIndent);
         if (blockEndLine > blockStartLine) {
             lines.subList(blockStartLine, blockEndLine).clear();
         }
         if (!newBlock.isEmpty()) {
-            lines.addAll(blockStartLine, Arrays.asList(newBlock.split("\r?\n")));
+            lines.addAll(blockStartLine, Arrays.asList(newBlock.split("\\r?\\n")));
         }
     }
 
-    // ... (generateListBlock, formatValue, getIndentation, save, NodePosition are unchanged from previous correct version) ...
     private String generateListBlock(List<?> list, int indentation) {
         if (list.isEmpty()) return "";
         StringBuilder block = new StringBuilder();
-        String indentStr = " ".repeat(indentation);
+        String indentStr = repeat(' ', indentation);
         for (int i = 0; i < list.size(); i++) {
             block.append(indentStr).append("- ").append(formatValue(list.get(i)));
             if (i < list.size() - 1) block.append(System.lineSeparator());
         }
         return block.toString();
     }
+
     private String formatValue(Object value) {
         if (value == null) return "null";
         if (value instanceof Boolean || value instanceof Number) return value.toString();
@@ -153,7 +173,9 @@ public final class ConfigPatcher {
                     Double.parseDouble(s);
                     needsQuotes = true;
                 }
-            } catch (NumberFormatException e) { /* Good */ }
+            } catch (NumberFormatException e) {
+                // Good
+            }
         }
         if (!needsQuotes) {
             for (char c : YAML_SPECIAL_CHARS.toCharArray()) {
@@ -164,33 +186,27 @@ public final class ConfigPatcher {
             }
         }
         if (needsQuotes) {
-            // Double-quoted YAML scalars interpret backslash escapes, so a
-            // raw `\d` from a regex round-trips as an "unknown escape"
-            // parser error. Escape `\` first so the `\` we inject ahead of
-            // any embedded `"` doesn't get re-doubled by the second pass.
             return "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"") + "\"";
         }
         return s;
     }
+
     private int getIndentation(String line) {
-        for (int i = 0; i < line.length(); i++) if (line.charAt(i) != ' ') return i;
+        for (int i = 0; i < line.length(); i++) {
+            if (line.charAt(i) != ' ') return i;
+        }
         return 0;
     }
 
     /**
-     * If the key on {@code lineIndex} has an inline list value
-     * ({@code key: [a, b, c]}), rewrite the line to {@code key:} so the
-     * block-list rewrite below the key doesn't end up doubling the values.
-     * Trailing comments are preserved. Lines without an inline-list shape
-     * are left untouched.
+     * If the key on lineIndex has an inline list value, rewrite the line to key:
+     * so the block-list rewrite below the key doesn't double the values.
      */
     private void scrubInlineListFromKeyLine(int lineIndex) {
         String line = lines.get(lineIndex);
         int colonIdx = line.indexOf(':');
         if (colonIdx < 0) return;
         String afterColon = line.substring(colonIdx + 1);
-        // Split off any trailing comment so the bracket detection is local
-        // to the value portion only.
         int hashIdx = -1;
         boolean inString = false;
         char quote = 0;
@@ -209,13 +225,46 @@ public final class ConfigPatcher {
         String valuePart = (hashIdx >= 0 ? afterColon.substring(0, hashIdx) : afterColon).trim();
         String trailingComment = hashIdx >= 0 ? "  " + afterColon.substring(hashIdx).trim() : "";
         if (valuePart.startsWith("[") && valuePart.endsWith("]")) {
-            // Inline-list form. Keep "key:" + any trailing comment; let the
-            // block-list rewrite happen below.
             lines.set(lineIndex, line.substring(0, colonIdx + 1) + trailingComment);
         }
     }
+
     public void save() throws IOException {
         Files.write(file.toPath(), lines, StandardCharsets.UTF_8);
     }
-    public record NodePosition(int lineIndex, int indent) {}
+
+    public static final class NodePosition {
+        public final int lineIndex;
+        public final int indent;
+
+        public NodePosition(int lineIndex, int indent) {
+            this.lineIndex = lineIndex;
+            this.indent = indent;
+        }
+
+        public int lineIndex() {
+            return lineIndex;
+        }
+
+        public int indent() {
+            return indent;
+        }
+    }
+
+    private static String repeat(char c, int count) {
+        StringBuilder builder = new StringBuilder(Math.max(0, count));
+        for (int i = 0; i < count; i++) {
+            builder.append(c);
+        }
+        return builder.toString();
+    }
+
+    private static String join(List<String> values, String separator) {
+        StringBuilder builder = new StringBuilder();
+        for (int i = 0; i < values.size(); i++) {
+            if (i > 0) builder.append(separator);
+            builder.append(values.get(i));
+        }
+        return builder.toString();
+    }
 }

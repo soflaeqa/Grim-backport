@@ -33,17 +33,34 @@ public class PacketOrderF extends Check implements PostPredictionCheck {
     private final ArrayDeque<FlagData> flags = new ArrayDeque<>();
 
     static String actionName(int action) {
-        return switch (action) {
-            case ACTION_INTERACT -> "interact";
-            case ACTION_ATTACK -> "attack";
-            case ACTION_SPECTATE_ENTITY -> "spectateEntity";
-            case ACTION_PLACE -> "place";
-            case ACTION_USE -> "use";
-            case ACTION_PICK -> "pick";
-            case ACTION_DIG -> "dig";
-            case ACTION_OPEN_INVENTORY -> "openInventory";
-            default -> "unknown";
-        };
+        switch (action) {
+            case ACTION_INTERACT:
+                return "interact";
+
+            case ACTION_ATTACK:
+                return "attack";
+
+            case ACTION_SPECTATE_ENTITY:
+                return "spectateEntity";
+
+            case ACTION_PLACE:
+                return "place";
+
+            case ACTION_USE:
+                return "use";
+
+            case ACTION_PICK:
+                return "pick";
+
+            case ACTION_DIG:
+                return "dig";
+
+            case ACTION_OPEN_INVENTORY:
+                return "openInventory";
+
+            default:
+                return "unknown";
+        }
     }
 
     private static int action(PacketReceiveEvent event) {
@@ -67,22 +84,26 @@ public class PacketOrderF extends Check implements PostPredictionCheck {
                 || event.getPacketType() == PacketType.Play.Client.PICK_ITEM
                 || event.getPacketType() == PacketType.Play.Client.PLAYER_DIGGING
                 || (event.getPacketType() == PacketType.Play.Client.CLIENT_STATUS
-                && new WrapperPlayClientClientStatus(event).getAction() == WrapperPlayClientClientStatus.Action.OPEN_INVENTORY_ACHIEVEMENT)
-        ) if (player.packetOrderProcessor.isSprinting() || player.packetOrderProcessor.isSneaking()) {
-            int action = action(event);
-            boolean sprinting = player.packetOrderProcessor.isSprinting();
-            boolean sneaking = player.packetOrderProcessor.isSneaking();
-            if (!player.canSkipTicks()) {
-                if (flag(V.write(verbose()).str(actionName(action)).bool(sprinting).bool(sneaking)) && shouldModifyPackets()) {
-                    if (event.getPacketType() == PacketType.Play.Client.PLAYER_DIGGING
-                            && !canCancel(new WrapperPlayClientPlayerDigging(event).getAction())
-                    ) return; // don't cause a noslow
+                && new WrapperPlayClientClientStatus(event).getAction() == WrapperPlayClientClientStatus.Action.OPEN_INVENTORY_ACHIEVEMENT)) {
 
-                    event.setCancelled(true);
-                    player.onPacketCancel();
+            if (player.packetOrderProcessor.isSprinting() || player.packetOrderProcessor.isSneaking()) {
+                int action = action(event);
+                boolean sprinting = player.packetOrderProcessor.isSprinting();
+                boolean sneaking = player.packetOrderProcessor.isSneaking();
+
+                if (!player.canSkipTicks()) {
+                    if (flag(V.write(verbose()).str(actionName(action)).bool(sprinting).bool(sneaking)) && shouldModifyPackets()) {
+                        if (event.getPacketType() == PacketType.Play.Client.PLAYER_DIGGING
+                                && !canCancel(new WrapperPlayClientPlayerDigging(event).getAction())) {
+                            return; // don't cause a noslow
+                        }
+
+                        event.setCancelled(true);
+                        player.onPacketCancel();
+                    }
+                } else {
+                    flags.add(new FlagData(action, sprinting, sneaking));
                 }
-            } else {
-                flags.add(new FlagData(action, sprinting, sneaking));
             }
         }
     }
@@ -100,6 +121,27 @@ public class PacketOrderF extends Check implements PostPredictionCheck {
         flags.clear();
     }
 
-    private record FlagData(int action, boolean sprinting, boolean sneaking) {
+    private static final class FlagData {
+        private final int action;
+        private final boolean sprinting;
+        private final boolean sneaking;
+
+        private FlagData(int action, boolean sprinting, boolean sneaking) {
+            this.action = action;
+            this.sprinting = sprinting;
+            this.sneaking = sneaking;
+        }
+
+        public int action() {
+            return action;
+        }
+
+        public boolean sprinting() {
+            return sprinting;
+        }
+
+        public boolean sneaking() {
+            return sneaking;
+        }
     }
 }

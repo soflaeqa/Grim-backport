@@ -43,7 +43,7 @@ public class PacketEntitySelf extends PacketEntity {
             setAttribute(Attributes.STEP_HEIGHT, 0.5f);
         }
 
-        getAttribute(Attributes.SCALE).orElseThrow().withSetRewriter((oldValue, newValue) -> {
+        getAttribute(Attributes.SCALE).orElseThrow(() -> new IllegalStateException("Missing SCALE attribute")).withSetRewriter((oldValue, newValue) -> {
             if (player.getClientVersion().isOlderThanOrEquals(ClientVersion.V_1_20_5) || newValue == oldValue) {
                 return oldValue;
             } else {

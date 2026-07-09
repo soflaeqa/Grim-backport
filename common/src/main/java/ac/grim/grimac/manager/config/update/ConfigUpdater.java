@@ -89,7 +89,7 @@ public final class ConfigUpdater {
                     ? resourceDirectory : resourceDirectory + "/";
             this.latestVersion = latestVersion;
             this.flavor = Objects.requireNonNull(flavor, "flavor");
-            this.migrations = Map.copyOf(migrations);
+            this.migrations = Collections.unmodifiableMap(new LinkedHashMap<>(migrations));
         }
 
         public static @NotNull Builder builder(@NotNull String resourceDirectory,
@@ -292,11 +292,13 @@ public final class ConfigUpdater {
         outputView.put("config-version", spec.latestVersion);
         outputView.put("config-flavor", spec.flavor.name());
 
-        applyEntries(configFile, ownLog.finalState().entrySet().stream()
-                .map(e -> new WriteLog.Entry(
-                        e.getValue() == null ? WriteLog.Op.REMOVE : WriteLog.Op.PUT,
-                        e.getKey(), e.getValue()))
-                .toList());
+        List<WriteLog.Entry> ownEntries = new ArrayList<>();
+        for (Map.Entry<String, Object> e : ownLog.finalState().entrySet()) {
+            ownEntries.add(new WriteLog.Entry(
+                    e.getValue() == null ? WriteLog.Op.REMOVE : WriteLog.Op.PUT,
+                    e.getKey(), e.getValue()));
+        }
+        applyEntries(configFile, ownEntries);
 
         logger.info("[grim-config-updater] " + configFile.getName()
                 + " migrated v" + oldVersion + " → v" + spec.latestVersion
@@ -390,7 +392,10 @@ public final class ConfigUpdater {
 
     private static int parseVersion(@Nullable Object raw) {
         if (raw == null) return 0;
-        if (raw instanceof Number n) return n.intValue();
+        if (raw instanceof Number) {
+            Number n = (Number) raw;
+            return n.intValue();
+        }
         try { return Integer.parseInt(raw.toString().trim()); }
         catch (NumberFormatException e) { return 0; }
     }

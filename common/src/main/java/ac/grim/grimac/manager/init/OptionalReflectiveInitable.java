@@ -23,7 +23,8 @@ public abstract class OptionalReflectiveInitable implements StartableInitable, S
         try {
             Class<? extends Initable> handlerClass = Class.forName(handlerClassName).asSubclass(Initable.class);
             delegate = handlerClass.getDeclaredConstructor().newInstance();
-            if (delegate instanceof StartableInitable startable) {
+            if (delegate instanceof StartableInitable) {
+                StartableInitable startable = (StartableInitable) delegate;
                 startable.start();
             }
         } catch (ReflectiveOperationException | LinkageError e) {
@@ -33,7 +34,8 @@ public abstract class OptionalReflectiveInitable implements StartableInitable, S
 
     @Override
     public final void stop() {
-        if (delegate instanceof StoppableInitable stoppable) {
+        if (delegate instanceof StoppableInitable) {
+            StoppableInitable stoppable = (StoppableInitable) delegate;
             stoppable.stop();
         }
         delegate = null;

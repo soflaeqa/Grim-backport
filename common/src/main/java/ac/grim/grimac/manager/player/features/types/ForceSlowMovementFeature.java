@@ -14,9 +14,15 @@ public class ForceSlowMovementFeature implements GrimFeature {
     @Override
     public void setState(GrimPlayer player, ConfigManager config, FeatureState state) {
         switch (state) {
-            case ENABLED -> player.setForceSlowMovement(true);
-            case DISABLED -> player.setForceSlowMovement(false);
-            default -> player.setForceSlowMovement(isEnabledInConfig(player, config));
+            case ENABLED:
+                player.setForceSlowMovement(true);
+                break;
+            case DISABLED:
+                player.setForceSlowMovement(false);
+                break;
+            default:
+                player.setForceSlowMovement(isEnabledInConfig(player, config));
+                break;
         }
     }
 

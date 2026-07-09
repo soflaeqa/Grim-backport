@@ -14,7 +14,6 @@ import ac.grim.grimac.api.storage.identity.NameResolver;
 import ac.grim.grimac.api.storage.model.PlayerIdentity;
 import ac.grim.grimac.api.storage.query.Cursor;
 import ac.grim.grimac.api.storage.query.Page;
-import ac.grim.grimac.api.storage.query.Queries;
 import ac.grim.grimac.command.BuildableCommand;
 import ac.grim.grimac.command.render.HistoryComponentRenderer;
 import ac.grim.grimac.internal.storage.checks.CheckRegistry;
@@ -213,9 +212,9 @@ public class GrimHistory implements BuildableCommand {
         runWithPrelude(sender, target, (uuid, displayName, lifecycle, history) -> {
             Integer ordinal = resolveSessionOrdinal(sessionRaw, uuid, history);
             if (ordinal == null) {
-                return List.of(message("grim-history-session-not-found",
+                return listOf(message("grim-history-session-not-found",
                         "%prefix% &cSession &f%ordinal%&c not found for &f%player%&c.",
-                        Map.of("player", displayName, "ordinal", sessionRaw)));
+                        mapOf("player", displayName, "ordinal", sessionRaw)));
             }
             return renderDetail(sender, lifecycle, history, uuid, displayName,
                     ordinal, detailed, verbose, /*pageArg*/ null, filter);
@@ -234,9 +233,9 @@ public class GrimHistory implements BuildableCommand {
         runWithPrelude(sender, target, (uuid, displayName, lifecycle, history) -> {
             Integer ordinal = resolveSessionOrdinal(sessionRaw, uuid, history);
             if (ordinal == null) {
-                return List.of(message("grim-history-session-not-found",
+                return listOf(message("grim-history-session-not-found",
                         "%prefix% &cSession &f%ordinal%&c not found for &f%player%&c.",
-                        Map.of("player", displayName, "ordinal", sessionRaw)));
+                        mapOf("player", displayName, "ordinal", sessionRaw)));
             }
             return renderDetail(sender, lifecycle, history, uuid, displayName,
                     ordinal, detailed, verbose, Math.max(1, page), filter);
@@ -374,12 +373,12 @@ public class GrimHistory implements BuildableCommand {
         // the operator knows whether to flip config or check the log.
         if (lifecycle == null || !lifecycle.isEnabled()) {
             sender.sendMessage(message("grim-history-disabled",
-                    "%prefix% &cHistory subsystem is disabled!", Map.of()));
+                    "%prefix% &cHistory subsystem is disabled!", mapOf()));
             return;
         }
         if (!lifecycle.isLoaded()) {
             sender.sendMessage(message("grim-history-load-failure",
-                    "%prefix% &cHistory subsystem failed to load! Check server console for errors.", Map.of()));
+                    "%prefix% &cHistory subsystem failed to load! Check server console for errors.", mapOf()));
             return;
         }
 
@@ -395,13 +394,13 @@ public class GrimHistory implements BuildableCommand {
             HistoryService history = lifecycle.historyService();
             if (history == null) {
                 sendHistoryMessage(sender, message("grim-history-disabled",
-                        "%prefix% &cHistory subsystem is disabled!", Map.of()));
+                        "%prefix% &cHistory subsystem is disabled!", mapOf()));
                 return;
             }
             UUID targetUuid = resolveUuid(target, lifecycle, onlineUuid);
             if (targetUuid == null) {
                 sendHistoryMessage(sender, message("grim-history-unknown-player",
-                        "%prefix% &cUnknown player: &f%player%", Map.of("player", target)));
+                        "%prefix% &cUnknown player: &f%player%", mapOf("player", target)));
                 return;
             }
             sendHistoryMessages(sender, action.run(targetUuid, target, lifecycle, history));
@@ -410,7 +409,7 @@ public class GrimHistory implements BuildableCommand {
             // class name so operators still see *something* useful.
             sendHistoryMessage(sender, message("grim-history-failed",
                     "%prefix% &cFailed to load history: &7%error%",
-                    Map.of("error", e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage())));
+                    mapOf("error", e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage())));
         }
     }
 
@@ -461,14 +460,16 @@ public class GrimHistory implements BuildableCommand {
                                          boolean detailed, boolean verbose, @Nullable Integer violationPage,
                                          @Nullable Predicate<ViolationEntry> filter) throws Exception {
         SessionDetail detail = null;
-        if (history instanceof ac.grim.grimac.internal.storage.history.HistoryServiceImpl impl) {
+        if (history instanceof ac.grim.grimac.internal.storage.history.HistoryServiceImpl) {
+            ac.grim.grimac.internal.storage.history.HistoryServiceImpl impl =
+                    (ac.grim.grimac.internal.storage.history.HistoryServiceImpl) history;
             detail = impl.getSessionDetailByOrdinal(uuid, sessionOrdinal)
                     .toCompletableFuture().get(10, TimeUnit.SECONDS);
         }
         if (detail == null) {
-            return List.of(message("grim-history-session-not-found",
+            return listOf(message("grim-history-session-not-found",
                     "%prefix% &cSession &f%ordinal%&c not found for &f%player%&c.",
-                    Map.of(
+                    mapOf(
                             "player", displayName,
                             "ordinal", Integer.toString(sessionOrdinal))));
         }
@@ -560,7 +561,7 @@ public class GrimHistory implements BuildableCommand {
         for (GrimPlayer player : GrimAPI.INSTANCE.getPlayerDataManager().getEntries()) {
             for (AbstractCheck check : player.checkManager.allChecks.values()) {
                 String stableKey = check.getStableKey();
-                if (stableKey == null || stableKey.isBlank()) continue;
+                if (stableKey == null || stableKey.trim().isEmpty()) continue;
                 if (!seenStableKeys.add(stableKey)) continue;
                 definitions.add(new CheckDefinition(stableKey, check.getCheckName(), check.getDescription()));
             }
@@ -614,15 +615,56 @@ public class GrimHistory implements BuildableCommand {
         return GrimAPI.INSTANCE.getExternalAPI().getGrimVersion();
     }
 
-    private record RepairPlan(
-            Map<Integer, Integer> legacyToCatalogIds,
-            int ambiguousHashes,
-            int catalogIdCollisions) {}
+    private static final class RepairPlan {
+        private final Map<Integer, Integer> legacyToCatalogIds;
+        private final int ambiguousHashes;
+        private final int catalogIdCollisions;
 
-    private record CheckDefinition(String stableKey, String display, String description) {}
+        private RepairPlan(Map<Integer, Integer> legacyToCatalogIds, int ambiguousHashes, int catalogIdCollisions) {
+            this.legacyToCatalogIds = legacyToCatalogIds;
+            this.ambiguousHashes = ambiguousHashes;
+            this.catalogIdCollisions = catalogIdCollisions;
+        }
+
+        public Map<Integer, Integer> legacyToCatalogIds() {
+            return legacyToCatalogIds;
+        }
+
+        public int ambiguousHashes() {
+            return ambiguousHashes;
+        }
+
+        public int catalogIdCollisions() {
+            return catalogIdCollisions;
+        }
+    }
+
+    private static final class CheckDefinition {
+        private final String stableKey;
+        private final String display;
+        private final String description;
+
+        private CheckDefinition(String stableKey, String display, String description) {
+            this.stableKey = stableKey;
+            this.display = display;
+            this.description = description;
+        }
+
+        public String stableKey() {
+            return stableKey;
+        }
+
+        public String display() {
+            return display;
+        }
+
+        public String description() {
+            return description;
+        }
+    }
 
     private static void sendHistoryMessage(Sender sender, Component message) {
-        sendHistoryMessages(sender, List.of(message));
+        sendHistoryMessages(sender, listOf(message));
     }
 
     private static void sendHistoryMessages(Sender sender, List<Component> messages) {
@@ -651,7 +693,10 @@ public class GrimHistory implements BuildableCommand {
     }
 
     private static void flatten(Component c, StringBuilder sb) {
-        if (c instanceof TextComponent tc) sb.append(tc.content());
+        if (c instanceof TextComponent) {
+            TextComponent tc = (TextComponent) c;
+            sb.append(tc.content());
+        }
         for (Component child : c.children()) flatten(child, sb);
     }
 
@@ -679,50 +724,29 @@ public class GrimHistory implements BuildableCommand {
      * lookup. Capped at {@link #MAX_PLAYER_SUGGESTIONS}.
      */
     private static SuggestionProvider<Sender> targetSuggestions(CloudPlatformCommandArguments arguments) {
-        SuggestionProvider<Sender> onlineProvider = arguments.onlinePlayerSuggestions();
-        return SuggestionProvider.blocking((ctx, in) -> {
-            String partial = in.remainingInput();
-            String partialLower = partial == null ? "" : partial.toLowerCase(Locale.ROOT);
+        final SuggestionProvider<Sender> onlineProvider = arguments.onlinePlayerSuggestions();
 
+        return SuggestionProvider.blocking((ctx, in) -> {
             List<Suggestion> onlineSuggestions;
+
             try {
                 Iterable<? extends Suggestion> onlineIt = onlineProvider.suggestionsFuture(ctx, in)
                         .toCompletableFuture().get(500, TimeUnit.MILLISECONDS);
+
                 onlineSuggestions = new ArrayList<>();
-                onlineIt.forEach(onlineSuggestions::add);
-            } catch (Exception e) {
-                onlineSuggestions = List.of();
-            }
 
-            if (partialLower.isEmpty()) return onlineSuggestions;
+                for (Suggestion suggestion : onlineIt) {
+                    onlineSuggestions.add(suggestion);
 
-            Set<String> seen = new HashSet<>();
-            List<Suggestion> out = new ArrayList<>();
-            for (Suggestion s : onlineSuggestions) {
-                if (seen.add(s.suggestion().toLowerCase(Locale.ROOT))) {
-                    out.add(s);
-                    if (out.size() >= MAX_PLAYER_SUGGESTIONS) return out;
-                }
-            }
-
-            DataStoreLifecycle dsl = GrimAPI.INSTANCE.getDataStoreLifecycle();
-            if (dsl == null || !dsl.isLoaded() || dsl.dataStore() == null) return out;
-            try {
-                Page<PlayerIdentity> page = dsl.dataStore().query(
-                                Categories.PLAYER_IDENTITY,
-                                Queries.listPlayersByNamePrefix(partialLower, MAX_PLAYER_SUGGESTIONS))
-                        .toCompletableFuture().get(1, TimeUnit.SECONDS);
-                for (PlayerIdentity id : page.items()) {
-                    if (id.currentName() == null) continue;
-                    if (seen.add(id.currentName().toLowerCase(Locale.ROOT))) {
-                        out.add(Suggestion.suggestion(id.currentName()));
-                        if (out.size() >= MAX_PLAYER_SUGGESTIONS) return out;
+                    if (onlineSuggestions.size() >= MAX_PLAYER_SUGGESTIONS) {
+                        break;
                     }
                 }
             } catch (Exception e) {
-                // Datastore unavailable or timed out — online-only fallback already populated.
+                onlineSuggestions = new ArrayList<>();
             }
-            return out;
+
+            return onlineSuggestions;
         });
     }
 
@@ -730,9 +754,9 @@ public class GrimHistory implements BuildableCommand {
     private static SuggestionProvider<Sender> listPageSuggestions() {
         return SuggestionProvider.blocking((ctx, in) -> {
             UUID uuid = resolveTargetUuid(ctx);
-            if (uuid == null) return List.of();
+            if (uuid == null) return listOf();
             DataStoreLifecycle dsl = GrimAPI.INSTANCE.getDataStoreLifecycle();
-            if (dsl == null || !dsl.isLoaded() || dsl.historyService() == null) return List.of();
+            if (dsl == null || !dsl.isLoaded() || dsl.historyService() == null) return listOf();
             try {
                 long total = dsl.historyService().countSessions(uuid)
                         .toCompletableFuture().get(1, TimeUnit.SECONDS);
@@ -740,7 +764,7 @@ public class GrimHistory implements BuildableCommand {
                 int maxPages = Math.max(1, (int) ((total + entriesPerPage - 1) / Math.max(1, entriesPerPage)));
                 return rangeSuggestions(1, Math.min(maxPages, MAX_SUGGESTIONS));
             } catch (Exception e) {
-                return List.of();
+                return listOf();
             }
         });
     }
@@ -749,10 +773,10 @@ public class GrimHistory implements BuildableCommand {
     private static SuggestionProvider<Sender> sessionSuggestions() {
         return SuggestionProvider.blocking((ctx, in) -> {
             UUID uuid = resolveTargetUuid(ctx);
-            if (uuid == null) return List.of(Suggestion.suggestion(LATEST_ALIAS));
+            if (uuid == null) return listOf(Suggestion.suggestion(LATEST_ALIAS));
             DataStoreLifecycle dsl = GrimAPI.INSTANCE.getDataStoreLifecycle();
             if (dsl == null || !dsl.isLoaded() || dsl.historyService() == null) {
-                return List.of(Suggestion.suggestion(LATEST_ALIAS));
+                return listOf(Suggestion.suggestion(LATEST_ALIAS));
             }
             try {
                 long total = dsl.historyService().countSessions(uuid)
@@ -763,7 +787,7 @@ public class GrimHistory implements BuildableCommand {
                 for (int i = 1; i <= max; i++) out.add(Suggestion.suggestion(Integer.toString(i)));
                 return out;
             } catch (Exception e) {
-                return List.of(Suggestion.suggestion(LATEST_ALIAS));
+                return listOf(Suggestion.suggestion(LATEST_ALIAS));
             }
         });
     }
@@ -776,21 +800,23 @@ public class GrimHistory implements BuildableCommand {
     private static SuggestionProvider<Sender> violationPageSuggestions() {
         return SuggestionProvider.blocking((ctx, in) -> {
             UUID uuid = resolveTargetUuid(ctx);
-            if (uuid == null) return List.of();
+            if (uuid == null) return listOf();
             DataStoreLifecycle dsl = GrimAPI.INSTANCE.getDataStoreLifecycle();
-            if (dsl == null || !dsl.isLoaded() || dsl.historyService() == null) return List.of();
+            if (dsl == null || !dsl.isLoaded() || dsl.historyService() == null) return listOf();
             String sessionRaw = ctx.<String>getOrDefault("session", null);
-            if (sessionRaw == null) return List.of();
+            if (sessionRaw == null) return listOf();
             try {
                 Integer ordinal = resolveSessionOrdinal(sessionRaw, uuid, dsl.historyService());
-                if (ordinal == null) return List.of();
+                if (ordinal == null) return listOf();
                 SessionDetail detail;
-                if (!(dsl.historyService() instanceof ac.grim.grimac.internal.storage.history.HistoryServiceImpl impl)) {
-                    return List.of();
+                if (!(dsl.historyService() instanceof ac.grim.grimac.internal.storage.history.HistoryServiceImpl)) {
+                    return listOf();
                 }
+                ac.grim.grimac.internal.storage.history.HistoryServiceImpl impl =
+                        (ac.grim.grimac.internal.storage.history.HistoryServiceImpl) dsl.historyService();
                 detail = impl.getSessionDetailByOrdinal(uuid, ordinal)
                         .toCompletableFuture().get(1, TimeUnit.SECONDS);
-                if (detail == null) return List.of();
+                if (detail == null) return listOf();
                 int entriesPerPage = dsl.config().history().entriesPerPage();
                 // Page unit depends on --detailed; without that info here, suggest
                 // the larger of the two so we never under-offer. Detailed mode
@@ -799,7 +825,7 @@ public class GrimHistory implements BuildableCommand {
                 int maxPages = Math.max(1, (rows + entriesPerPage - 1) / Math.max(1, entriesPerPage));
                 return rangeSuggestions(1, Math.min(maxPages, MAX_SUGGESTIONS));
             } catch (Exception e) {
-                return List.of();
+                return listOf();
             }
         });
     }
@@ -846,10 +872,34 @@ public class GrimHistory implements BuildableCommand {
     }
 
     private static List<Suggestion> rangeSuggestions(int fromInclusive, int toInclusive) {
-        if (toInclusive < fromInclusive) return List.of();
+        if (toInclusive < fromInclusive) return listOf();
         List<Suggestion> out = new ArrayList<>(toInclusive - fromInclusive + 1);
         for (int i = fromInclusive; i <= toInclusive; i++) out.add(Suggestion.suggestion(Integer.toString(i)));
         return out;
+    }
+
+    @SafeVarargs
+    private static <T> List<T> listOf(T... values) {
+        List<T> list = new ArrayList<>(values.length);
+        for (T value : values) {
+            list.add(value);
+        }
+        return list;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <K, V> Map<K, V> mapOf(Object... keyValues) {
+        Map<K, V> map = new LinkedHashMap<>();
+
+        if (keyValues.length % 2 != 0) {
+            throw new IllegalArgumentException("mapOf requires an even number of arguments");
+        }
+
+        for (int i = 0; i < keyValues.length; i += 2) {
+            map.put((K) keyValues[i], (V) keyValues[i + 1]);
+        }
+
+        return map;
     }
 
     private Component message(String key, String fallback, Map<String, String> vars) {

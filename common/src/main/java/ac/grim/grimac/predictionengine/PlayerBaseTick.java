@@ -163,11 +163,17 @@ public final class PlayerBaseTick {
         // Pre-1.17 clients don't have powder snow and therefore don't desync
         if (player.getClientVersion().isOlderThanOrEquals(ClientVersion.V_1_16_4)) return;
 
-        final ValuedAttribute playerSpeed = player.compensatedEntities.self.getAttribute(Attributes.MOVEMENT_SPEED).orElseThrow();
+        final ValuedAttribute playerSpeed = player.compensatedEntities.self.getAttribute(Attributes.MOVEMENT_SPEED)
+                .orElseThrow(new java.util.function.Supplier<java.util.NoSuchElementException>() {
+                    @Override
+                    public java.util.NoSuchElementException get() {
+                        return new java.util.NoSuchElementException("No value present");
+                    }
+                });
 
         // Might be null after respawn?
         final Optional<WrapperPlayServerUpdateAttributes.Property> property = playerSpeed.property();
-        if (property.isEmpty()) return;
+        if (!property.isPresent()) return;
 
         // The client first desync's this attribute
         property.get().getModifiers().removeIf(modifier -> modifier.getUUID().equals(CompensatedEntities.SNOW_MODIFIER_UUID) || modifier.getName().getKey().equals("powder_snow"));
@@ -375,12 +381,21 @@ public final class PlayerBaseTick {
             double d7 = direction2 == BlockFace.WEST || direction2 == BlockFace.EAST ? relativeXMovement : relativeZMovement;
             d6 = direction2 == BlockFace.EAST || direction2 == BlockFace.SOUTH ? 1.0 - d7 : d7;
             // d7 and d6 flip the movement direction based on desired movement direction
-            boolean doesSuffocate = switch (direction2) {
-                case EAST -> suffocatesAt(player, blockX + 1, blockZ);
-                case WEST -> suffocatesAt(player, blockX - 1, blockZ);
-                case NORTH -> suffocatesAt(player, blockX, blockZ - 1);
-                default -> suffocatesAt(player, blockX, blockZ + 1);
-            };
+            boolean doesSuffocate;
+            switch (direction2) {
+                case EAST:
+                    doesSuffocate = suffocatesAt(player, blockX + 1, blockZ);
+                    break;
+                case WEST:
+                    doesSuffocate = suffocatesAt(player, blockX - 1, blockZ);
+                    break;
+                case NORTH:
+                    doesSuffocate = suffocatesAt(player, blockX, blockZ - 1);
+                    break;
+                default:
+                    doesSuffocate = suffocatesAt(player, blockX, blockZ + 1);
+                    break;
+            }
 
             if (d6 >= lowestValue || doesSuffocate) continue;
             lowestValue = d6;

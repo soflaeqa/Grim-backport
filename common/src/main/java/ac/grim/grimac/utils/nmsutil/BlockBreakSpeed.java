@@ -61,7 +61,23 @@ public class BlockBreakSpeed {
 
     private static final boolean SERVER_USES_COMPONENTS_AND_RULES = PacketEvents.getAPI().getServerManager().getVersion().isNewerThanOrEquals(ServerVersion.V_1_20_5);
 
-    record ToolSpeedData(float speedMultiplier, boolean isCorrectToolForDrop) {}
+    private static final class ToolSpeedData {
+        private final float speedMultiplier;
+        private final boolean isCorrectToolForDrop;
+
+        private ToolSpeedData(float speedMultiplier, boolean isCorrectToolForDrop) {
+            this.speedMultiplier = speedMultiplier;
+            this.isCorrectToolForDrop = isCorrectToolForDrop;
+        }
+
+        public float speedMultiplier() {
+            return speedMultiplier;
+        }
+
+        public boolean isCorrectToolForDrop() {
+            return isCorrectToolForDrop;
+        }
+    }
 
     public static double getBlockDamage(GrimPlayer player, WrappedBlockState block) {
         ItemStack tool = player.inventory.getHeldItem();
@@ -135,7 +151,7 @@ public class BlockBreakSpeed {
         OptionalInt conduit = player.compensatedEntities.getPotionLevelForSelfPlayer(PotionTypes.CONDUIT_POWER);
 
         if (digSpeed.isPresent() || conduit.isPresent()) {
-            int hasteLevel = Math.max(digSpeed.isEmpty() ? 0 : digSpeed.getAsInt(), conduit.isEmpty() ? 0 : conduit.getAsInt());
+            int hasteLevel = Math.max(!digSpeed.isPresent() ? 0 : digSpeed.getAsInt(), !conduit.isPresent() ? 0 : conduit.getAsInt());
             speedMultiplier *= (float) (1 + (0.2 * (hasteLevel + 1)));
         }
 

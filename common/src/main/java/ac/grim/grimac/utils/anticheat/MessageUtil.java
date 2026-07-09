@@ -87,7 +87,7 @@ public class MessageUtil {
         final Map<String, String> staticReplacements = GrimAPI.INSTANCE.getExternalAPI().getStaticReplacements();
         final Map<String, Function<GrimUser, String>> variableReplacements = GrimAPI.INSTANCE.getExternalAPI().getVariableReplacements();
         // 32 is a heuristic buffer. It roughly covers the expansion cost of one UUID (36 chars) vs one placeholder (6 chars).
-        final StringBuilder sb = new StringBuilder(string.length() + 32);
+        final StringBuffer sb = new StringBuffer(string.length() + 32);
 
         // --- PHASE 2: THE REPLACEMENT LOOP ---
         // Used do-while because the first `matcher.find()` was already called above.
@@ -158,7 +158,7 @@ public class MessageUtil {
 
         // hex codes
         Matcher matcher = HEX_PATTERN.matcher(string);
-        StringBuilder sb = new StringBuilder(string.length());
+        StringBuffer sb = new StringBuffer(string.length());
 
         while (matcher.find()) {
             matcher.appendReplacement(sb, "<#" + matcher.group(0).replaceAll("[&§#x]", "") + ">");

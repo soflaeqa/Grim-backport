@@ -12,11 +12,22 @@ import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Objects;
 import java.util.UUID;
 
-public record BukkitPlatformWorld(@NotNull World bukkitWorld) implements PlatformWorld {
+public final class BukkitPlatformWorld implements PlatformWorld {
 
     private static final boolean LEGACY_SERVER_VERSION = PacketEvents.getAPI().getServerManager().getVersion().isOlderThanOrEquals(ServerVersion.V_1_12_2);
+
+    private final @NotNull World bukkitWorld;
+
+    public BukkitPlatformWorld(@NotNull World bukkitWorld) {
+        this.bukkitWorld = Objects.requireNonNull(bukkitWorld, "bukkitWorld");
+    }
+
+    public @NotNull World bukkitWorld() {
+        return bukkitWorld;
+    }
 
     @Override
     public boolean isChunkLoaded(int chunkX, int chunkZ) {
@@ -54,5 +65,23 @@ public record BukkitPlatformWorld(@NotNull World bukkitWorld) implements Platfor
     @Override
     public boolean isLoaded() {
         return Bukkit.getWorld(bukkitWorld.getUID()) != null;
+    }
+
+    @Override
+    public String toString() {
+        return "BukkitPlatformWorld[bukkitWorld=" + bukkitWorld + "]";
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof BukkitPlatformWorld)) return false;
+        BukkitPlatformWorld that = (BukkitPlatformWorld) o;
+        return bukkitWorld.equals(that.bukkitWorld);
+    }
+
+    @Override
+    public int hashCode() {
+        return bukkitWorld.hashCode();
     }
 }

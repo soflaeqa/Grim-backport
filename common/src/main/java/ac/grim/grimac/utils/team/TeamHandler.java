@@ -47,15 +47,20 @@ public class TeamHandler extends Check implements PacketCheck {
             WrapperPlayServerTeams teams = new WrapperPlayServerTeams(event);
             final String teamName = teams.getTeamName();
             player.latencyUtils.addRealTimeTask(player.lastTransactionSent.get(), () -> {
-                EntityTeam entityTeam = switch (teams.getTeamMode()) {
-                    case CREATE -> {
-                        var newTeam = new EntityTeam(player, teamName);
+                EntityTeam entityTeam;
+                switch (teams.getTeamMode()) {
+                    case CREATE:
+                        EntityTeam newTeam = new EntityTeam(player, teamName);
                         entityTeams.put(teamName, newTeam);
-                        yield newTeam;
-                    }
-                    case REMOVE -> entityTeams.remove(teamName);
-                    default -> entityTeams.get(teamName);
-                };
+                        entityTeam = newTeam;
+                        break;
+                    case REMOVE:
+                        entityTeam = entityTeams.remove(teamName);
+                        break;
+                    default:
+                        entityTeam = entityTeams.get(teamName);
+                        break;
+                }
 
                 if (entityTeam != null) {
                     entityTeam.update(teams);

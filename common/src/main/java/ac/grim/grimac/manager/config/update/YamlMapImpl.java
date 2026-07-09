@@ -43,8 +43,9 @@ final class YamlMapImpl implements YamlMap {
     @Override
     public @Nullable Integer getInt(@NotNull String dottedPath) {
         Object v = get(dottedPath);
-        if (v instanceof Number n) return n.intValue();
-        if (v instanceof String s) {
+        if (v instanceof Number) return ((Number) v).intValue();
+        if (v instanceof String) {
+            String s = (String) v;
             try { return Integer.parseInt(s.trim()); } catch (NumberFormatException ignore) { return null; }
         }
         return null;
@@ -53,8 +54,9 @@ final class YamlMapImpl implements YamlMap {
     @Override
     public @Nullable Long getLong(@NotNull String dottedPath) {
         Object v = get(dottedPath);
-        if (v instanceof Number n) return n.longValue();
-        if (v instanceof String s) {
+        if (v instanceof Number) return ((Number) v).longValue();
+        if (v instanceof String) {
+            String s = (String) v;
             try { return Long.parseLong(s.trim()); } catch (NumberFormatException ignore) { return null; }
         }
         return null;
@@ -63,8 +65,9 @@ final class YamlMapImpl implements YamlMap {
     @Override
     public @Nullable Double getDouble(@NotNull String dottedPath) {
         Object v = get(dottedPath);
-        if (v instanceof Number n) return n.doubleValue();
-        if (v instanceof String s) {
+        if (v instanceof Number) return ((Number) v).doubleValue();
+        if (v instanceof String) {
+            String s = (String) v;
             try { return Double.parseDouble(s.trim()); } catch (NumberFormatException ignore) { return null; }
         }
         return null;
@@ -73,8 +76,9 @@ final class YamlMapImpl implements YamlMap {
     @Override
     public @Nullable Boolean getBool(@NotNull String dottedPath) {
         Object v = get(dottedPath);
-        if (v instanceof Boolean b) return b;
-        if (v instanceof String s) {
+        if (v instanceof Boolean) return (Boolean) v;
+        if (v instanceof String) {
+            String s = (String) v;
             String t = s.trim();
             if (t.equalsIgnoreCase("true")) return Boolean.TRUE;
             if (t.equalsIgnoreCase("false")) return Boolean.FALSE;
@@ -85,14 +89,14 @@ final class YamlMapImpl implements YamlMap {
     @Override
     public @Nullable List<?> getList(@NotNull String dottedPath) {
         Object v = get(dottedPath);
-        return v instanceof List<?> l ? l : null;
+        return v instanceof List<?> ? (List<?>) v : null;
     }
 
     @Override
     @SuppressWarnings("unchecked")
     public @Nullable Map<String, Object> getMap(@NotNull String dottedPath) {
         Object v = get(dottedPath);
-        return v instanceof Map<?, ?> m ? (Map<String, Object>) m : null;
+        return v instanceof Map<?, ?> ? (Map<String, Object>) v : null;
     }
 
     @Override
@@ -133,8 +137,8 @@ final class YamlMapImpl implements YamlMap {
         String[] parts = dottedPath.split("\\.");
         Object cursor = root;
         for (String part : parts) {
-            if (!(cursor instanceof Map<?, ?> m)) return null;
-            cursor = ((Map<String, Object>) m).get(part);
+            if (!(cursor instanceof Map<?, ?>)) return null;
+            cursor = ((Map<String, Object>) cursor).get(part);
             if (cursor == null) return null;
         }
         return cursor;

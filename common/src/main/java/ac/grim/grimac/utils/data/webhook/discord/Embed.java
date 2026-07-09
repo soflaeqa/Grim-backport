@@ -107,7 +107,7 @@ public class Embed implements JsonSerializable {
     }
 
     public @NotNull Embed footer(@Nullable EmbedFooter footer) {
-        if (footer == null || footer.icon() == null && footer.text().isBlank()) {
+        if (footer == null || footer.icon() == null && footer.text().trim().isEmpty()) {
             this.footer = null;
         } else {
             this.footer = footer;

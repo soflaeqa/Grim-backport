@@ -183,14 +183,21 @@ public class CompensatedInventory extends Check implements PacketCheck {
     }
 
     private ItemStack getByEquipmentType(EquipmentType type) {
-        return switch (type) {
-            case HEAD -> getHelmet();
-            case CHEST -> getChestplate();
-            case LEGS -> getLeggings();
-            case FEET -> getBoots();
-            case OFFHAND -> getOffHand();
-            case MAINHAND -> getHeldItem();
-        };
+        switch (type) {
+            case HEAD:
+                return getHelmet();
+            case CHEST:
+                return getChestplate();
+            case LEGS:
+                return getLeggings();
+            case FEET:
+                return getBoots();
+            case OFFHAND:
+                return getOffHand();
+            case MAINHAND:
+            default:
+                return getHeldItem();
+        }
     }
 
     public boolean hasItemType(ItemType type) {
@@ -215,13 +222,20 @@ public class CompensatedInventory extends Check implements PacketCheck {
             if (equipmentType != null) {
                 int slot;
                 switch (equipmentType) {
-                    case HEAD -> slot = Inventory.SLOT_HELMET;
-                    case CHEST -> slot = Inventory.SLOT_CHESTPLATE;
-                    case LEGS -> slot = Inventory.SLOT_LEGGINGS;
-                    case FEET -> slot = Inventory.SLOT_BOOTS;
-                    default -> {
+                    case HEAD:
+                        slot = Inventory.SLOT_HELMET;
+                        break;
+                    case CHEST:
+                        slot = Inventory.SLOT_CHESTPLATE;
+                        break;
+                    case LEGS:
+                        slot = Inventory.SLOT_LEGGINGS;
+                        break;
+                    case FEET:
+                        slot = Inventory.SLOT_BOOTS;
+                        break;
+                    default:
                         return; // Not armor, therefore we shouldn't run this code
-                    }
                 }
 
                 ItemStack currentEquippedItem = getByEquipmentType(equipmentType);

@@ -77,13 +77,13 @@ public class ExplosionHandler extends Check implements PostPredictionCheck {
         player.sendTransaction();
 
         player.latencyUtils.addRealTimeTask(player.lastTransactionSent.get(), () -> {
-            for (Vector3i record : explosion.getRecords()) {
+            for (Vector3i explosionRecord : explosion.getRecords()) {
                 // Null OR not flip redstone blocks, then set to air
                 if (blockInteraction != WrapperPlayServerExplosion.BlockInteraction.TRIGGER_BLOCKS) {
-                    player.compensatedWorld.updateBlock(record.x, record.y, record.z, 0);
+                    player.compensatedWorld.updateBlock(explosionRecord.x, explosionRecord.y, explosionRecord.z, 0);
                 } else {
                     // We need to flip redstone blocks, or do special things with other blocks
-                    final WrappedBlockState state = player.compensatedWorld.getBlock(record);
+                    final WrappedBlockState state = player.compensatedWorld.getBlock(explosionRecord);
                     final StateType type = state.getType();
                     if (BlockTags.CANDLES.contains(type) || BlockTags.CANDLE_CAKES.contains(type)) {
                         state.setLit(false);
@@ -96,7 +96,7 @@ public class ExplosionHandler extends Check implements PostPredictionCheck {
                     // Otherwise try and flip/open it.
                     final boolean canFlip = state.hasProperty(StateValue.POWERED) && !state.isPowered() || type == StateTypes.LEVER;
                     if (canFlip) {
-                        player.compensatedWorld.tickOpenable(record.x, record.y, record.z);
+                        player.compensatedWorld.tickOpenable(explosionRecord.x, explosionRecord.y, explosionRecord.z);
                     }
                 }
             }

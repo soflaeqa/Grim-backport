@@ -8,6 +8,7 @@ import ac.grim.grimac.platform.api.manager.cloud.CloudPlatformCommandArguments;
 import ac.grim.grimac.platform.api.player.PlatformPlayer;
 import ac.grim.grimac.platform.api.sender.Sender;
 import ac.grim.grimac.player.GrimPlayer;
+import lombok.var;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.event.ClickEvent;
@@ -42,8 +43,10 @@ public class GrimList implements BuildableCommand {
 
     private void handleList(Sender sender, String id) {
         switch (id) {
-            case "players" -> handleListPlayers(sender);
-            default -> sender.sendMessage(Component.text()
+            case "players":
+                handleListPlayers(sender);
+                break;
+            default: sender.sendMessage(Component.text()
                     .append(Component.text("Invalid argument: ", NamedTextColor.GRAY))
                     .append(Component.text(id, NamedTextColor.RED))
                     .build());

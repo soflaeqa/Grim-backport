@@ -48,7 +48,8 @@ public class BadPacketsX extends Check implements PostPredictionCheck {
 
         if (event.getPacketType() == PacketType.Play.Client.ENTITY_ACTION) {
             switch (new WrapperPlayClientEntityAction(event).getAction()) {
-                case START_SNEAKING, STOP_SNEAKING -> {
+                case START_SNEAKING:
+                case STOP_SNEAKING:
                     if (sneak) {
                         if (player.canSkipTicks() || flag()) {
                             flags++;
@@ -56,8 +57,10 @@ public class BadPacketsX extends Check implements PostPredictionCheck {
                     }
 
                     sneak = true;
-                }
-                case START_SPRINTING, STOP_SPRINTING -> {
+                    break;
+
+                case START_SPRINTING:
+                case STOP_SPRINTING:
                     if (player.inVehicle()) {
                         return;
                     }
@@ -69,7 +72,10 @@ public class BadPacketsX extends Check implements PostPredictionCheck {
                     }
 
                     sprint = true;
-                }
+                    break;
+
+                default:
+                    break;
             }
         }
     }

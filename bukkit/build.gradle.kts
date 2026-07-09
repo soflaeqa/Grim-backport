@@ -61,7 +61,7 @@ dependencies {
     }
     implementation(libs.cloud.paper)
     implementation(libs.adventure.platform.bukkit)
-    implementation(libs.grim.bukkit.internal)
+    compileOnly(libs.grim.bukkit.internal)
 
     implementation(project(":common"))
     shadow(project(":common"))
@@ -211,8 +211,15 @@ tasks {
     shadowJar {
         exclude("META-INF/services/javax.annotation.processing.Processor")
 
+        // Java 8 backport: SnakeYAML 2.x is a multi-release jar and contributes
+        // Java 9 classes under META-INF/versions/**. They are not needed on Java 8,
+        // but a plain class-version scan still sees them as >52, so remove them
+        // during the normal shadowJar build instead of running a separate script.
+        exclude("META-INF/versions/**")
+
         manifest {
             attributes["paperweight-mappings-namespace"] = "mojang"
+            attributes["Multi-Release"] = "false"
         }
     }
 }

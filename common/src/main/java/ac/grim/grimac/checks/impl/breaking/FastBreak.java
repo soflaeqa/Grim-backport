@@ -33,7 +33,7 @@ public class FastBreak extends Check implements BlockBreakCheck {
 
     // For some reason these states flag and I don't know why.
     // Better to just exempt to not annoy legit players.
-    private static final Set<StateType> EXEMPT_STATES = Set.of();
+    private static final Set<StateType> EXEMPT_STATES = java.util.Collections.emptySet();
     private final boolean clientOlderThanServer = PacketEvents.getAPI().getServerManager().getVersion().getProtocolVersion() > player.getClientVersion().getProtocolVersion();
 
     public FastBreak(GrimPlayer playerData) {

@@ -51,7 +51,8 @@ public class BlockProperties {
                 return movementSpeed * 0.1f;
             }
 
-            if (riding instanceof PacketEntityStrider strider) {
+            if (riding instanceof PacketEntityStrider) {
+                PacketEntityStrider strider = (PacketEntityStrider) riding;
                 // Unsure which version the speed changed in
                 if (player.getClientVersion().isNewerThanOrEquals(ClientVersion.V_1_20)) {
                     return movementSpeed * 0.1f;

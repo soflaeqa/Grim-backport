@@ -44,9 +44,11 @@ public class DoubleInputTransformer implements InputTransformer<DoubleInput> { /
 
     @Override
     public Vector3dm getMovementResultFromInput(GrimPlayer player, Input inputVector, float speed, float yaw) {
-        if (!(inputVector instanceof DoubleInput input)) {
+        if (!(inputVector instanceof DoubleInput)) {
             throw new IllegalStateException("Expected input vector of type DoubleInput, but got " + inputVector.getClass().getSimpleName());
         }
+
+        DoubleInput input = (DoubleInput) inputVector;
 
         float yawRadians = GrimMath.radians(yaw);
         float sin = player.trigHandler.sin(yawRadians);

@@ -78,12 +78,14 @@ public abstract class AbstractLuckPermsHandler implements StoppableInitable {
     }
 
     private void onNodeMutate(PermissionHolder target, Node node) {
-        if (target instanceof User user) {
+        if (target instanceof User) {
+            User user = (User) target;
             if (shouldRefreshUserForNode(node)) refreshGrimPlayerPermissions(user);
             return;
         }
 
-        if (target instanceof Group group && shouldRefreshGroupForNode(node)) {
+        if (target instanceof Group && shouldRefreshGroupForNode(node)) {
+            Group group = (Group) target;
             refreshPlayersInheritingGroup(group);
         }
     }
@@ -105,14 +107,26 @@ public abstract class AbstractLuckPermsHandler implements StoppableInitable {
     }
 
     private boolean shouldRefreshUserForNode(Node node) {
-        if (node instanceof PermissionNode permissionNode) return isGrimPermission(permissionNode);
-        if (node instanceof InheritanceNode inheritanceNode) return inheritedGroupMayAffectGrimPermissions(inheritanceNode);
+        if (node instanceof PermissionNode) {
+            PermissionNode permissionNode = (PermissionNode) node;
+            return isGrimPermission(permissionNode);
+        }
+        if (node instanceof InheritanceNode) {
+            InheritanceNode inheritanceNode = (InheritanceNode) node;
+            return inheritedGroupMayAffectGrimPermissions(inheritanceNode);
+        }
         return false;
     }
 
     private boolean shouldRefreshGroupForNode(Node node) {
-        if (node instanceof PermissionNode permissionNode) return isGrimPermission(permissionNode);
-        if (node instanceof InheritanceNode inheritanceNode) return inheritedGroupMayAffectGrimPermissions(inheritanceNode);
+        if (node instanceof PermissionNode) {
+            PermissionNode permissionNode = (PermissionNode) node;
+            return isGrimPermission(permissionNode);
+        }
+        if (node instanceof InheritanceNode) {
+            InheritanceNode inheritanceNode = (InheritanceNode) node;
+            return inheritedGroupMayAffectGrimPermissions(inheritanceNode);
+        }
         return false;
     }
 
@@ -138,7 +152,10 @@ public abstract class AbstractLuckPermsHandler implements StoppableInitable {
 
     private static boolean holderHasGrimPermission(PermissionHolder holder, Set<String> seenGroups) {
         for (Node node : holder.getNodes()) {
-            if (node instanceof PermissionNode permissionNode && isGrimPermission(permissionNode)) return true;
+            if (node instanceof PermissionNode) {
+                PermissionNode permissionNode = (PermissionNode) node;
+                if (isGrimPermission(permissionNode)) return true;
+            }
         }
 
         for (Group group : holder.getInheritedGroups(holder.getQueryOptions())) {

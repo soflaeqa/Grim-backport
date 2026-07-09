@@ -36,7 +36,16 @@ public class ArgumentOptions<T> {
         return new Builder<>(new ArgumentOptions<>(clazz, key, () -> null)).nullable(true);
     }
 
-    public record Builder<T>(ArgumentOptions<T> options) {
+    public static final class Builder<T> {
+        private final ArgumentOptions<T> options;
+
+        public Builder(ArgumentOptions<T> options) {
+            this.options = options;
+        }
+
+        public ArgumentOptions<T> options() {
+            return options;
+        }
 
         public Builder<T> key(String key) {
             options.key = key;

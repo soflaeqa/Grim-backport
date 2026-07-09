@@ -98,7 +98,14 @@ public class PacketPlayerSteer extends PacketListenerAbstract {
         if (player.packetStateData.receivedSteerVehicle && riding != null) {
             // Horse and boat have first passenger in control
             // If the player is the first passenger, disregard this attempt to have the server control the entity
-            if ((riding.isBoat || riding.isHappyGhast || (riding instanceof JumpableEntity jumpable && jumpable.hasSaddle())) &&
+            boolean jumpableWithSaddle = false;
+
+            if (riding instanceof JumpableEntity) {
+                JumpableEntity jumpable = (JumpableEntity) riding;
+                jumpableWithSaddle = jumpable.hasSaddle();
+            }
+
+            if ((riding.isBoat || riding.isHappyGhast || jumpableWithSaddle) &&
                     riding.passengers.get(0) == player.compensatedEntities.self &&
                     // Although if the player has server controlled entities
                     player.getClientVersion().isNewerThanOrEquals(ClientVersion.V_1_9) &&

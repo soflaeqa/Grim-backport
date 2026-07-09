@@ -47,13 +47,19 @@ public enum AxisSelect {
 
     @Contract(pure = true)
     public static AxisSelect byFace(@NotNull BlockFace face) {
-        return switch (face) {
-            case EAST -> EAST;
-            case WEST -> WEST;
-            case NORTH -> NORTH;
-            case SOUTH -> SOUTH;
-            case UP -> UP;
-            default -> DOWN;
-        };
+        switch (face) {
+    case EAST:
+        return EAST;
+    case WEST:
+        return WEST;
+    case NORTH:
+        return NORTH;
+    case SOUTH:
+        return SOUTH;
+    case UP:
+        return UP;
+    default:
+        return DOWN;
+}
     }
 }

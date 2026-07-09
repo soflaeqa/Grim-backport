@@ -45,7 +45,7 @@ public class BadPacketsL extends Check implements PacketCheck {
                     || packet.getSequence() != 0
             ) {
                 final Vector3i pos = packet.getBlockPosition();
-                var buf = V.write(verbose())
+                Verbose.Writer buf = V.write(verbose())
                         .mcPos(pos.getX(), pos.getY(), pos.getZ())
                         .sint(packet.getBlockFaceId())
                         .sint(packet.getSequence())

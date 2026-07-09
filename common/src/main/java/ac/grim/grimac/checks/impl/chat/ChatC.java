@@ -63,6 +63,11 @@ public class ChatC extends Check implements PacketCheck {
     @Override
     public void onReload(ConfigManager config) {
         String regexString = config.getStringElse(getConfigName() + ".exempt-regex", null);
-        exemptRegex = regexString == null ? null : Pattern.compile(regexString).asMatchPredicate();
+        if (regexString == null) {
+            exemptRegex = null;
+        } else {
+            final Pattern pattern = Pattern.compile(regexString);
+            exemptRegex = input -> pattern.matcher(input).matches();
+        }
     }
 }

@@ -375,8 +375,9 @@ public enum BlockPlaceResult {
         if (place.isSolidBlocking(BlockFace.DOWN)) {
             place.set();
         }
-    }, ItemTypes.values().stream().filter(mat -> mat.getName().getKey().contains("candle_cake"))
-            .toList().toArray(new ItemType[0])),
+    }, ItemTypes.values().stream()
+            .filter(mat -> mat.getName().getKey().contains("candle_cake"))
+            .toArray(ItemType[]::new)),
 
     PISTON_BASE((player, place) -> {
         WrappedBlockState piston = place.material.createBlockState(CompensatedWorld.blockVersion);

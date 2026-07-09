@@ -23,23 +23,36 @@ public class BukkitConversionUtils {
     @Contract(value = "null -> null; !null -> !null", pure = true)
     public static @Nullable PermissionDefault toBukkitPermissionDefault(@Nullable PermissionDefaultValue permissionDefaultValue) {
         if (permissionDefaultValue == null) return null;
-        return switch (permissionDefaultValue) {
-            case TRUE -> PermissionDefault.TRUE;
-            case FALSE -> PermissionDefault.FALSE;
-            case OP -> PermissionDefault.OP;
-            case NOT_OP -> PermissionDefault.NOT_OP;
-        };
+        switch (permissionDefaultValue) {
+            case TRUE:
+                return PermissionDefault.TRUE;
+            case FALSE:
+                return PermissionDefault.FALSE;
+            case OP:
+                return PermissionDefault.OP;
+            case NOT_OP:
+                return PermissionDefault.NOT_OP;
+            default:
+                throw new IllegalStateException("Unknown permission default value: " + permissionDefaultValue);
+        }
     }
 
     public static BlockFace fromBukkitFace(org.bukkit.block.BlockFace face) {
-        return switch (face) {
-            case NORTH -> BlockFace.NORTH;
-            case SOUTH -> BlockFace.SOUTH;
-            case WEST -> BlockFace.WEST;
-            case EAST -> BlockFace.EAST;
-            case UP -> BlockFace.UP;
-            case DOWN -> BlockFace.DOWN;
-            default -> BlockFace.OTHER;
-        };
+        switch (face) {
+            case NORTH:
+                return BlockFace.NORTH;
+            case SOUTH:
+                return BlockFace.SOUTH;
+            case WEST:
+                return BlockFace.WEST;
+            case EAST:
+                return BlockFace.EAST;
+            case UP:
+                return BlockFace.UP;
+            case DOWN:
+                return BlockFace.DOWN;
+            default:
+                return BlockFace.OTHER;
+        }
     }
 }

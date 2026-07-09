@@ -114,7 +114,8 @@ public class EntityFluidInteraction {
                 for (int y = minY; y <= maxY; y++) {
                     int sectionY = y - (level.getMinHeight() >> 4);
                     if (sectionY >= 0 && sectionY < sections.length) {
-                        if (HAS_FLUID_COUNT && sections[sectionY] instanceof Chunk_v1_18 target) {
+                        if (HAS_FLUID_COUNT && sections[sectionY] instanceof Chunk_v1_18) {
+                            Chunk_v1_18 target = (Chunk_v1_18) sections[sectionY];
                             hasFluidAndLoaded |= target.getFluidCount() != 0;
                         } else {
                             hasFluidAndLoaded = true;

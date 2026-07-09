@@ -98,6 +98,21 @@ public class SpectateManager implements StartableInitable, ReloadableInitable {
         spectatingPlayers.remove(uuid);
     }
 
-    private record PreviousState(GameMode gameMode, Location location) {
+    private static final class PreviousState {
+        private final GameMode gameMode;
+        private final Location location;
+
+        private PreviousState(GameMode gameMode, Location location) {
+            this.gameMode = gameMode;
+            this.location = location;
+        }
+
+        public GameMode gameMode() {
+            return gameMode;
+        }
+
+        public Location location() {
+            return location;
+        }
     }
 }

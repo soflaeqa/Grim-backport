@@ -29,19 +29,32 @@ public class EntityMetadataPoseUtil {
 
     public static @Nullable Pose getPoseFromMetadata(List<EntityData<?>> entityMetadata) {
         EntityData<?> poseData = WatchableIndexUtil.getIndex(entityMetadata, POSE_METADATA_INDEX);
-        return poseData == null || !(poseData.getValue() instanceof EntityPose pose) ? null : mapEntityPose(pose);
+        if (poseData == null || !(poseData.getValue() instanceof EntityPose)) {
+            return null;
+        }
+
+        EntityPose pose = (EntityPose) poseData.getValue();
+        return mapEntityPose(pose);
     }
 
     private static Pose mapEntityPose(EntityPose entityPose) {
-        return switch (entityPose) {
-            case FALL_FLYING -> Pose.FALL_FLYING;
-            case SLEEPING -> Pose.SLEEPING;
-            case SWIMMING -> Pose.SWIMMING;
-            case SPIN_ATTACK -> Pose.SPIN_ATTACK;
-            case CROUCHING -> Pose.CROUCHING;
-            case LONG_JUMPING -> Pose.LONG_JUMPING;
-            case DYING -> Pose.DYING;
-            default -> Pose.STANDING;
-        };
+        switch (entityPose) {
+            case FALL_FLYING:
+                return Pose.FALL_FLYING;
+            case SLEEPING:
+                return Pose.SLEEPING;
+            case SWIMMING:
+                return Pose.SWIMMING;
+            case SPIN_ATTACK:
+                return Pose.SPIN_ATTACK;
+            case CROUCHING:
+                return Pose.CROUCHING;
+            case LONG_JUMPING:
+                return Pose.LONG_JUMPING;
+            case DYING:
+                return Pose.DYING;
+            default:
+                return Pose.STANDING;
+        }
     }
 }

@@ -14,9 +14,15 @@ public class ForceStuckSpeedFeature implements GrimFeature {
     @Override
     public void setState(GrimPlayer player, ConfigManager config, FeatureState state) {
         switch (state) {
-            case ENABLED -> player.setForceStuckSpeed(true);
-            case DISABLED -> player.setForceStuckSpeed(false);
-            default -> player.setForceStuckSpeed(isEnabledInConfig(player, config));
+            case ENABLED:
+                player.setForceStuckSpeed(true);
+                break;
+            case DISABLED:
+                player.setForceStuckSpeed(false);
+                break;
+            default:
+                player.setForceStuckSpeed(isEnabledInConfig(player, config));
+                break;
         }
     }
 

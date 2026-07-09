@@ -39,6 +39,7 @@ public class PlaceholderAPIExpansion extends PlaceholderExpansion {
     public @NotNull List<String> getPlaceholders() {
         Set<String> staticReplacements = GrimAPI.INSTANCE.getExternalAPI().getStaticReplacements().keySet();
         Set<String> variableReplacements = GrimAPI.INSTANCE.getExternalAPI().getVariableReplacements().keySet();
+
         ArrayList<String> placeholders = new ArrayList<>(staticReplacements.size() + variableReplacements.size());
         for (String s : staticReplacements) {
             placeholders.add(s.equals("%grim_version%") ? s : "%grim_" + s.replace("%", "") + "%");
@@ -46,6 +47,7 @@ public class PlaceholderAPIExpansion extends PlaceholderExpansion {
         for (String s : variableReplacements) {
             placeholders.add(s.equals("%player%") ? "%grim_player%" : "%grim_player_" + s.replace("%", "") + "%");
         }
+
         return placeholders;
     }
 
@@ -60,7 +62,8 @@ public class PlaceholderAPIExpansion extends PlaceholderExpansion {
             }
         }
 
-        if (offlinePlayer instanceof Player player) {
+        if (offlinePlayer instanceof Player) {
+            Player player = (Player) offlinePlayer;
             GrimPlayer grimPlayer = GrimAPI.INSTANCE.getPlayerDataManager().getPlayer(player.getUniqueId());
             if (grimPlayer == null) return null;
 

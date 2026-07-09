@@ -303,7 +303,8 @@ public class CheckManager {
         if (registry == null) return;
         registry.registerTemplates(() -> {
             for (AbstractCheck check : allChecks.values()) {
-                if (check instanceof Check grimCheck) {
+                if (check instanceof Check) {
+                    Check grimCheck = (Check) check;
                     grimCheck.registerVerboseTemplates(registry);
                 }
             }

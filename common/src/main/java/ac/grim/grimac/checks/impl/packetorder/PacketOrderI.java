@@ -38,13 +38,22 @@ public class PacketOrderI extends Check implements PostPredictionCheck {
     private final ArrayDeque<FlagData> flags = new ArrayDeque<>();
 
     static String typeName(int type) {
-        return switch (type) {
-            case TYPE_INTERACT -> "interact";
-            case TYPE_PLACE_USE -> "place/use";
-            case TYPE_RELEASE -> "release";
-            case TYPE_ATTACK -> "attack";
-            default -> "unknown";
-        };
+        switch (type) {
+            case TYPE_INTERACT:
+                return "interact";
+
+            case TYPE_PLACE_USE:
+                return "place/use";
+
+            case TYPE_RELEASE:
+                return "release";
+
+            case TYPE_ATTACK:
+                return "attack";
+
+            default:
+                return "unknown";
+        }
     }
 
     /**
@@ -114,12 +123,17 @@ public class PacketOrderI extends Check implements PostPredictionCheck {
                 case STAB:
                     onAttack(event);
                     break;
+
                 case RELEASE_USE_ITEM:
-                    if (player.packetOrderProcessor.isAttackingOrStabbing() || player.packetOrderProcessor.isRightClicking() || player.packetOrderProcessor.isPicking() || player.packetOrderProcessor.isDigging()) {
+                    if (player.packetOrderProcessor.isAttackingOrStabbing()
+                            || player.packetOrderProcessor.isRightClicking()
+                            || player.packetOrderProcessor.isPicking()
+                            || player.packetOrderProcessor.isDigging()) {
                         boolean attacking = player.packetOrderProcessor.isAttackingOrStabbing();
                         boolean rightClicking = player.packetOrderProcessor.isRightClicking();
                         boolean picking = player.packetOrderProcessor.isPicking();
                         boolean digging = player.packetOrderProcessor.isDigging();
+
                         if (!player.canSkipTicks()) {
                             if (flag(write(TYPE_RELEASE, attacking, rightClicking, picking, false, digging))) {
                                 setback = true;
@@ -130,16 +144,24 @@ public class PacketOrderI extends Check implements PostPredictionCheck {
                         }
                     }
                     break;
+
                 case START_DIGGING:
                     double damage = BlockBreakSpeed.getBlockDamage(player, player.compensatedWorld.getBlock(packet.getBlockPosition()));
                     if (damage >= 1 || damage <= 0 && player.gamemode == GameMode.CREATIVE) {
                         return;
                     }
-                case CANCELLED_DIGGING, FINISHED_DIGGING:
+
+                case CANCELLED_DIGGING:
+                case FINISHED_DIGGING:
                     if (exemptPlacingWhileDigging || player.getClientVersion().isOlderThanOrEquals(ClientVersion.V_1_7_10)) {
                         return;
                     }
+
                     digging = true;
+                    break;
+
+                default:
+                    break;
             }
         }
 
@@ -194,12 +216,46 @@ public class PacketOrderI extends Check implements PostPredictionCheck {
         exemptPlacingWhileDigging = config.getBooleanElse(getConfigName() + ".exempt-placing-while-digging", false);
     }
 
-    private record FlagData(
-            int type,
-            boolean attacking,
-            boolean rightClicking,
-            boolean picking,
-            boolean releasing,
-            boolean digging) {
+    private static final class FlagData {
+        private final int type;
+        private final boolean attacking;
+        private final boolean rightClicking;
+        private final boolean picking;
+        private final boolean releasing;
+        private final boolean digging;
+
+        private FlagData(int type, boolean attacking, boolean rightClicking,
+                         boolean picking, boolean releasing, boolean digging) {
+            this.type = type;
+            this.attacking = attacking;
+            this.rightClicking = rightClicking;
+            this.picking = picking;
+            this.releasing = releasing;
+            this.digging = digging;
+        }
+
+        public int type() {
+            return type;
+        }
+
+        public boolean attacking() {
+            return attacking;
+        }
+
+        public boolean rightClicking() {
+            return rightClicking;
+        }
+
+        public boolean picking() {
+            return picking;
+        }
+
+        public boolean releasing() {
+            return releasing;
+        }
+
+        public boolean digging() {
+            return digging;
+        }
     }
 }

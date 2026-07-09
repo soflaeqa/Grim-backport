@@ -7,6 +7,7 @@ import org.jetbrains.annotations.Nullable;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Locale;
+import java.util.Objects;
 
 /**
  * Builds a legacy migration source from either a plugin data folder (SQLite
@@ -19,8 +20,66 @@ public final class V0Sources {
 
     private V0Sources() {}
 
-    public record V0Source(String type, String jdbcUrl, @Nullable String username,
-                           @Nullable String password, String summary) {}
+    public static final class V0Source {
+        private final String type;
+        private final String jdbcUrl;
+        private final @Nullable String username;
+        private final @Nullable String password;
+        private final String summary;
+
+        public V0Source(String type, String jdbcUrl, @Nullable String username,
+                        @Nullable String password, String summary) {
+            this.type = type;
+            this.jdbcUrl = jdbcUrl;
+            this.username = username;
+            this.password = password;
+            this.summary = summary;
+        }
+
+        public String type() {
+            return type;
+        }
+
+        public String jdbcUrl() {
+            return jdbcUrl;
+        }
+
+        public @Nullable String username() {
+            return username;
+        }
+
+        public @Nullable String password() {
+            return password;
+        }
+
+        public String summary() {
+            return summary;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (!(o instanceof V0Source)) return false;
+            V0Source v0Source = (V0Source) o;
+            return Objects.equals(type, v0Source.type)
+                    && Objects.equals(jdbcUrl, v0Source.jdbcUrl)
+                    && Objects.equals(username, v0Source.username)
+                    && Objects.equals(password, v0Source.password)
+                    && Objects.equals(summary, v0Source.summary);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(type, jdbcUrl, username, password, summary);
+        }
+
+        @Override
+        public String toString() {
+            return "V0Source[type=" + type + ", jdbcUrl=" + jdbcUrl
+                    + ", username=" + username + ", password=" + password
+                    + ", summary=" + summary + "]";
+        }
+    }
 
     /**
      * Returns {@code null} when no usable legacy source is found — either the
@@ -30,12 +89,17 @@ public final class V0Sources {
     public static @Nullable V0Source detect(@NotNull Path dataFolder, @NotNull ConfigManager cfg) {
         String rawType = cfg.getStringElse("history.database.type", "SQLITE")
                 .toUpperCase(Locale.ROOT);
-        return switch (rawType) {
-            case "MYSQL" -> mysqlSource(cfg);
-            case "POSTGRESQL" -> postgresqlSource(cfg);
-            case "NOOP" -> null;
-            default -> sqliteSource(dataFolder);
-        };
+
+        switch (rawType) {
+            case "MYSQL":
+                return mysqlSource(cfg);
+            case "POSTGRESQL":
+                return postgresqlSource(cfg);
+            case "NOOP":
+                return null;
+            default:
+                return sqliteSource(dataFolder);
+        }
     }
 
     public static @Nullable V0Source sqliteSource(@NotNull Path dataFolder) {

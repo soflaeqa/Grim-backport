@@ -232,25 +232,36 @@ public class Reach extends Check implements PacketCheck {
 
             InteractionData interactionData = attack.getValue();
             CheckResult result = checkReach(reachEntity, interactionData.x, interactionData.y, interactionData.z, interactionData.hasAttackRange, interactionData.maxReach, interactionData.hitboxMargin, interactionData.attackRangeMovement, false);
+
             switch (result.type()) {
-                case REACH -> {
+                case REACH:
                     flag(
                             V.write(verbose()).f64(result.minDistance()).uint(reachEntity.getType().getId(player.getClientVersion())),
                             () -> {
                                 String added = ", type=" + reachEntity.getType().getName().getKey();
-                                if (reachEntity instanceof PacketEntitySizeable sizeable) {
+
+                                if (reachEntity instanceof PacketEntitySizeable) {
+                                    PacketEntitySizeable sizeable = (PacketEntitySizeable) reachEntity;
                                     added += ", size=" + sizeable.size;
                                 }
+
                                 return result.verbose() + added;
                             });
-                }
-                case HITBOX -> {
+                    break;
+
+                case HITBOX:
                     String added = "type=" + reachEntity.getType().getName().getKey();
-                    if (reachEntity instanceof PacketEntitySizeable sizeable) {
+
+                    if (reachEntity instanceof PacketEntitySizeable) {
+                        PacketEntitySizeable sizeable = (PacketEntitySizeable) reachEntity;
                         added += ", size=" + sizeable.size;
                     }
+
                     player.checkManager.getCheck(Hitboxes.class).flag(result.verbose() + added);
-                }
+                    break;
+
+                default:
+                    break;
             }
         }
 
@@ -383,7 +394,35 @@ public class Reach extends Check implements PacketCheck {
         REACH, HITBOX, NONE
     }
 
-    private record CheckResult(ResultType type, double minDistance, double extraMovement, boolean hasExtraMovement) {
+    private static final class CheckResult {
+        private final ResultType type;
+        private final double minDistance;
+        private final double extraMovement;
+        private final boolean hasExtraMovement;
+
+        private CheckResult(ResultType type, double minDistance, double extraMovement, boolean hasExtraMovement) {
+            this.type = type;
+            this.minDistance = minDistance;
+            this.extraMovement = extraMovement;
+            this.hasExtraMovement = hasExtraMovement;
+        }
+
+        public ResultType type() {
+            return type;
+        }
+
+        public double minDistance() {
+            return minDistance;
+        }
+
+        public double extraMovement() {
+            return extraMovement;
+        }
+
+        public boolean hasExtraMovement() {
+            return hasExtraMovement;
+        }
+
         public boolean isFlag() {
             return type != ResultType.NONE;
         }
@@ -401,6 +440,24 @@ public class Reach extends Check implements PacketCheck {
         }
     }
 
-    private record InteractionData(double x, double y, double z, boolean hasAttackRange,
-                                   float maxReach, float hitboxMargin, Vector3dm attackRangeMovement) {}
+    private static final class InteractionData {
+        private final double x;
+        private final double y;
+        private final double z;
+        private final boolean hasAttackRange;
+        private final float maxReach;
+        private final float hitboxMargin;
+        private final Vector3dm attackRangeMovement;
+
+        private InteractionData(double x, double y, double z, boolean hasAttackRange,
+                                float maxReach, float hitboxMargin, Vector3dm attackRangeMovement) {
+            this.x = x;
+            this.y = y;
+            this.z = z;
+            this.hasAttackRange = hasAttackRange;
+            this.maxReach = maxReach;
+            this.hitboxMargin = hitboxMargin;
+            this.attackRangeMovement = attackRangeMovement;
+        }
+    }
 }

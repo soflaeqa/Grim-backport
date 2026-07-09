@@ -13,9 +13,7 @@ import org.jetbrains.annotations.Nullable;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.logging.Logger;
 
 public class ConfigManagerFileImpl implements ConfigManager, BasicReloadable {
@@ -32,7 +30,9 @@ public class ConfigManagerFileImpl implements ConfigManager, BasicReloadable {
     }
 
     /** Backend ids whose per-backend yml gets loaded + auto-updated alongside the user-facing files. */
-    static final List<String> BACKEND_IDS = List.of("sqlite", "mysql", "postgres", "mongo", "redis");
+    static final List<String> BACKEND_IDS = Collections.unmodifiableList(Arrays.asList(
+            "sqlite", "mysql", "postgres", "mongo", "redis"
+    ));
 
     private void runConfigUpdates() {
         Logger logger = Logger.getLogger("grim-config");

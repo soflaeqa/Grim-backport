@@ -29,6 +29,8 @@ public class BukkitOfflinePlatformPlayer implements OfflinePlatformPlayer {
 
     @Override
     public boolean equals(Object o) {
-        return o instanceof OfflinePlatformPlayer player && this.getUniqueId().equals(player.getUniqueId());
+        if (!(o instanceof OfflinePlatformPlayer)) return false;
+        OfflinePlatformPlayer player = (OfflinePlatformPlayer) o;
+        return this.getUniqueId().equals(player.getUniqueId());
     }
 }

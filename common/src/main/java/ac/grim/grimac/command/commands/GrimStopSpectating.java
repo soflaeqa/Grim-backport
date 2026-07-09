@@ -26,9 +26,9 @@ public class GrimStopSpectating implements BuildableCommand {
                         .permission("grim.spectate")
                         .optional("here", StringParser.stringParser(), SuggestionProvider.blocking((ctx, in) -> {
                             if (ctx.sender().hasPermission("grim.spectate.stophere")) {
-                                return List.of(Suggestion.suggestion("here"));
+                                return java.util.Collections.singletonList(Suggestion.suggestion("here"));
                             }
-                            return List.of(); // No suggestions if no permission
+                            return java.util.Collections.emptyList(); // No suggestions if no permission
                         }))
                         .handler(this::onStopSpectate)
                         .apply(CloudCommandService.REQUIREMENT_FACTORY.create(PlayerSenderRequirement.INSTANCE))

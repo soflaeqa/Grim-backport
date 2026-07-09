@@ -3,7 +3,16 @@ package ac.grim.grimac.manager.init.start;
 import ac.grim.grimac.platform.api.command.CommandService;
 import ac.grim.grimac.utils.anticheat.LogUtil;
 
-public record CommandRegister(CommandService service) implements StartableInitable {
+public final class CommandRegister implements StartableInitable {
+    private final CommandService service;
+
+    public CommandRegister(CommandService service) {
+        this.service = service;
+    }
+
+    public CommandService service() {
+        return service;
+    }
 
     @Override
     public void start() {

@@ -95,19 +95,19 @@ public final class AlertManagerImpl implements AlertManager, ConfigReloadable, S
      * @throws NullPointerException if the GrimPlayer's platformPlayer is null.
      */
     private @NotNull PlatformPlayer requirePlatformPlayerFromUser(@NotNull GrimUser user) {
-        Objects.requireNonNull(user, "user cannot be null"); // Should be guaranteed by interface contract, but good practice
+        Objects.requireNonNull(user, "user cannot be null");
 
-        if (!(user instanceof GrimPlayer grimPlayer)) {
-            // Throw a specific exception if the type is wrong
+        if (!(user instanceof GrimPlayer)) {
             throw new IllegalArgumentException("AlertManager action called with non-GrimPlayer user: " + user.getName());
         }
 
-        PlatformPlayer platformPlayer = grimPlayer.platformPlayer;
+        GrimPlayer grimPlayer = (GrimPlayer) user;
 
-        // Throw NullPointerException with the specific message if platformPlayer is null
-        Objects.requireNonNull(platformPlayer, "AlertManager action for user " + user.getName() + " with null platformPlayer (potentially during early join)");
+        if (grimPlayer.platformPlayer == null) {
+            throw new IllegalStateException("AlertManager action called before platform player was available: " + user.getName());
+        }
 
-        return platformPlayer;
+        return grimPlayer.platformPlayer;
     }
 
     /** Gets the cached message, applies placeholders, and sends it to a PlatformPlayer. */

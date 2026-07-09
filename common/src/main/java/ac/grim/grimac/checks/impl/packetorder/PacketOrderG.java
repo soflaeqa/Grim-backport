@@ -30,12 +30,19 @@ public class PacketOrderG extends Check implements PostPredictionCheck {
     private final ArrayDeque<FlagData> flags = new ArrayDeque<>();
 
     static String actionName(int action) {
-        return switch (action) {
-            case ACTION_OPEN_INVENTORY -> "openInventory";
-            case ACTION_SWAP -> "swap";
-            case ACTION_DROP -> "drop";
-            default -> "unknown";
-        };
+        switch (action) {
+            case ACTION_OPEN_INVENTORY:
+                return "openInventory";
+
+            case ACTION_SWAP:
+                return "swap";
+
+            case ACTION_DROP:
+                return "drop";
+
+            default:
+                return "unknown";
+        }
     }
 
     private static int action(DiggingAction action) {
@@ -47,26 +54,29 @@ public class PacketOrderG extends Check implements PostPredictionCheck {
         if (event.getPacketType() == PacketType.Play.Client.PLAYER_DIGGING || (event.getPacketType() == PacketType.Play.Client.CLIENT_STATUS
                 && new WrapperPlayClientClientStatus(event).getAction() == WrapperPlayClientClientStatus.Action.OPEN_INVENTORY_ACHIEVEMENT)) {
             DiggingAction action = null;
+
             if (event.getPacketType() == PacketType.Play.Client.PLAYER_DIGGING) {
                 action = new WrapperPlayClientPlayerDigging(event).getAction();
+
                 if (action != DiggingAction.SWAP_ITEM_WITH_OFFHAND
                         && action != DiggingAction.DROP_ITEM
-                        && action != DiggingAction.DROP_ITEM_STACK
-                ) return;
+                        && action != DiggingAction.DROP_ITEM_STACK) {
+                    return;
+                }
             }
 
             if (player.packetOrderProcessor.isAttackingOrStabbing()
                     || player.packetOrderProcessor.isReleasing()
                     || player.packetOrderProcessor.isRightClicking()
                     || player.packetOrderProcessor.isPicking()
-                    || player.packetOrderProcessor.isDigging()
-            ) {
+                    || player.packetOrderProcessor.isDigging()) {
                 int actionKind = action(action);
                 boolean attacking = player.packetOrderProcessor.isAttackingOrStabbing();
                 boolean releasing = player.packetOrderProcessor.isReleasing();
                 boolean rightClicking = player.packetOrderProcessor.isRightClicking();
                 boolean picking = player.packetOrderProcessor.isPicking();
                 boolean digging = player.packetOrderProcessor.isDigging();
+
                 if (!player.canSkipTicks()) {
                     if (flag(V.write(verbose())
                             .str(actionName(actionKind))
@@ -104,12 +114,46 @@ public class PacketOrderG extends Check implements PostPredictionCheck {
         flags.clear();
     }
 
-    private record FlagData(
-            int action,
-            boolean attacking,
-            boolean releasing,
-            boolean rightClicking,
-            boolean picking,
-            boolean digging) {
+    private static final class FlagData {
+        private final int action;
+        private final boolean attacking;
+        private final boolean releasing;
+        private final boolean rightClicking;
+        private final boolean picking;
+        private final boolean digging;
+
+        private FlagData(int action, boolean attacking, boolean releasing,
+                         boolean rightClicking, boolean picking, boolean digging) {
+            this.action = action;
+            this.attacking = attacking;
+            this.releasing = releasing;
+            this.rightClicking = rightClicking;
+            this.picking = picking;
+            this.digging = digging;
+        }
+
+        public int action() {
+            return action;
+        }
+
+        public boolean attacking() {
+            return attacking;
+        }
+
+        public boolean releasing() {
+            return releasing;
+        }
+
+        public boolean rightClicking() {
+            return rightClicking;
+        }
+
+        public boolean picking() {
+            return picking;
+        }
+
+        public boolean digging() {
+            return digging;
+        }
     }
 }

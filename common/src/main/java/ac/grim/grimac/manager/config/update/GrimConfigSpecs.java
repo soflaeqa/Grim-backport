@@ -101,13 +101,26 @@ public final class GrimConfigSpecs {
 
     private static @Nullable String backendIdFor(@Nullable String legacyType) {
         if (legacyType == null) return null;
-        return switch (legacyType) {
-            case "SQLITE" -> "sqlite";
-            case "MYSQL" -> "mysql";
-            case "POSTGRESQL", "POSTGRES" -> "postgres";
-            case "NOOP", "NONE", "DISABLED" -> null;
-            default -> null;
-        };
+
+        switch (legacyType) {
+            case "SQLITE":
+                return "sqlite";
+
+            case "MYSQL":
+                return "mysql";
+
+            case "POSTGRESQL":
+            case "POSTGRES":
+                return "postgres";
+
+            case "NOOP":
+            case "NONE":
+            case "DISABLED":
+                return null;
+
+            default:
+                return null;
+        }
     }
 
     public static @NotNull ConfigUpdater.Spec discord() {

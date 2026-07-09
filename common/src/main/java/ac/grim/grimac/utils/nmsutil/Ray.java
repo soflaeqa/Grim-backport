@@ -6,10 +6,28 @@ import com.github.retrooper.packetevents.util.Vector3d;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Objects;
+
 // Copied directly from Hawk
-public record Ray(@NotNull Vector3d origin, @NotNull Vector3d direction) implements Cloneable {
+public final class Ray implements Cloneable {
+    private final @NotNull Vector3d origin;
+    private final @NotNull Vector3d direction;
+
+    public Ray(@NotNull Vector3d origin, @NotNull Vector3d direction) {
+        this.origin = origin;
+        this.direction = direction;
+    }
+
     public Ray(@NotNull GrimPlayer player, double x, double y, double z, float xRot, float yRot) {
         this(new Vector3d(x, y, z), calculateDirection(player, xRot, yRot));
+    }
+
+    public @NotNull Vector3d origin() {
+        return origin;
+    }
+
+    public @NotNull Vector3d direction() {
+        return direction;
     }
 
     // Account for FastMath by using player's trig handler
@@ -46,5 +64,24 @@ public record Ray(@NotNull Vector3d origin, @NotNull Vector3d direction) impleme
         Vector3d c2 = other.origin.add(other.direction.multiply(origin.subtract(other.origin).dot(n1) / other.direction.dot(n1)));
 
         return new Pair<>(c1, c2);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Ray)) return false;
+        Ray ray = (Ray) o;
+        return Objects.equals(origin, ray.origin)
+                && Objects.equals(direction, ray.direction);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(origin, direction);
+    }
+
+    @Override
+    public String toString() {
+        return "Ray[origin=" + origin + ", direction=" + direction + "]";
     }
 }

@@ -541,7 +541,8 @@ public class GrimPlayer implements GrimUser {
         }
 
         String textReason;
-        if (reason instanceof TranslatableComponent translatableComponent) {
+        if (reason instanceof TranslatableComponent) {
+            TranslatableComponent translatableComponent = (TranslatableComponent) reason;
             textReason = translatableComponent.key();
         } else {
             textReason = LegacyComponentSerializer.legacySection().serialize(reason);
@@ -633,7 +634,8 @@ public class GrimPlayer implements GrimUser {
                 boolean disabledPermission = hasPermission("grim.disabled");
                 boolean exemptPermission = hasPermission("grim.exempt");
                 for (AbstractCheck check : checkManager.allChecks.values()) {
-                    if (check instanceof Check c) {
+                    if (check instanceof Check) {
+                        Check c = (Check) check;
                         c.updatePermissions();
                     }
                 }
@@ -660,7 +662,8 @@ public class GrimPlayer implements GrimUser {
 
     public ClientVersion getClientVersion() {
         // If temporarily null, assume server version...
-        return Objects.requireNonNullElseGet(user.getClientVersion(), () -> ClientVersion.getById(PacketEvents.getAPI().getServerManager().getVersion().getProtocolVersion()));
+        ClientVersion clientVersion = user.getClientVersion();
+        return clientVersion != null ? clientVersion : ClientVersion.getById(PacketEvents.getAPI().getServerManager().getVersion().getProtocolVersion());
     }
 
     // Alright, someone at mojang decided to not send a flying packet every tick with 1.9
@@ -702,14 +705,19 @@ public class GrimPlayer implements GrimUser {
             return this.isSneaking ? this.possibleEyeHeights[1] : this.possibleEyeHeights[0];
         } else {
             // 1.8 players just have their pose set to standing all the time
-            return switch (pose) {
-                case FALL_FLYING, // Elytra gliding
-                     SPIN_ATTACK, // Riptide trident
-                     SWIMMING -> // Swimming (includes crawling in 1.14+)
-                        this.possibleEyeHeights[2]; // [swimming/gliding/riptide height, standing height, sneaking height]
-                case NINE_CROUCHING, CROUCHING -> this.possibleEyeHeights[1]; // [sneaking height, standing height, swimming/gliding/riptide height]
-                default -> this.possibleEyeHeights[0]; // [standing height, sneaking height, swimming/gliding/riptide height]
-            };
+            switch (pose) {
+                case FALL_FLYING: // Elytra gliding
+                case SPIN_ATTACK: // Riptide trident
+                case SWIMMING: // Swimming (includes crawling in 1.14+)
+                    return this.possibleEyeHeights[2]; // [swimming/gliding/riptide height, standing height, sneaking height]
+
+                case NINE_CROUCHING:
+                case CROUCHING:
+                    return this.possibleEyeHeights[1]; // [sneaking height, standing height, swimming/gliding/riptide height]
+
+                default:
+                    return this.possibleEyeHeights[0]; // [standing height, sneaking height, swimming/gliding/riptide height]
+            }
         }
     }
 
@@ -1062,16 +1070,36 @@ public class GrimPlayer implements GrimUser {
         this.stuckSpeedMultiplier = StuckSpeed.NONE;
     }
 
-    public record Movement(Vector3d from, Vector3d to, Vector3d axisDependentOriginalMovement) {
+    public static final class Movement {
+        private final Vector3d from;
+        private final Vector3d to;
+        private final Vector3d axisDependentOriginalMovement;
+
+        public Movement(Vector3d from, Vector3d to, Vector3d axisDependentOriginalMovement) {
+            this.from = from;
+            this.to = to;
+            this.axisDependentOriginalMovement = axisDependentOriginalMovement;
+        }
 
         public Movement(Vector3d from, Vector3d to) {
             this(from, to, null);
         }
 
+        public Vector3d from() {
+            return from;
+        }
+
+        public Vector3d to() {
+            return to;
+        }
+
+        public Vector3d axisDependentOriginalMovement() {
+            return axisDependentOriginalMovement;
+        }
+
         public boolean axisIndependant() {
             return axisDependentOriginalMovement != null;
         }
-
     }
 
     // TODO (Cross-platform) keep track of world at packet level; do not rely on potentially non-lag-compensated platformPlayer.getWorld()

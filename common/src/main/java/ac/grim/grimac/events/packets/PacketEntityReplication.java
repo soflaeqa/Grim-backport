@@ -259,7 +259,8 @@ public class PacketEntityReplication extends Check implements PacketCheck {
 
             if (status.getStatus() == 31) {
                 PacketEntity hook = player.compensatedEntities.getEntity(status.getEntityId());
-                if (!(hook instanceof PacketEntityHook hookEntity)) return;
+                if (!(hook instanceof PacketEntityHook)) return;
+                PacketEntityHook hookEntity = (PacketEntityHook) hook;
 
                 if (hookEntity.attached == player.entityID) {
                     player.sendTransaction();
@@ -513,7 +514,8 @@ public class PacketEntityReplication extends Check implements PacketCheck {
         player.latencyUtils.addRealTimeTask(lastTrans, () -> {
             PacketEntity entity = player.compensatedEntities.getEntity(entityId);
             if (entity == null) return;
-            if (entity instanceof PacketEntityTrackXRot xRotEntity && yaw != null) {
+            if (entity instanceof PacketEntityTrackXRot && yaw != null) {
+                PacketEntityTrackXRot xRotEntity = (PacketEntityTrackXRot) entity;
                 xRotEntity.packetYaw = yaw;
                 xRotEntity.steps = entity.isBoat ? 10 : 3;
             }
@@ -537,7 +539,8 @@ public class PacketEntityReplication extends Check implements PacketCheck {
 
         player.latencyUtils.addRealTimeTask(player.lastTransactionSent.get(), () -> {
             PacketEntity entity = player.compensatedEntities.addEntity(entityID, uuid, type, position, xRot, extraData);
-            if (entity instanceof DashableEntity dashable) {
+            if (entity instanceof DashableEntity) {
+                DashableEntity dashable = (DashableEntity) entity;
                 player.dashableEntities.addEntity(entityID, dashable);
             }
 

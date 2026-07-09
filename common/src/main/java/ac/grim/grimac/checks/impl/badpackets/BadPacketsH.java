@@ -43,12 +43,14 @@ public class BadPacketsH extends BlockPlaceCheck {
     @Override
     public void onBlockBreak(BlockBreak blockBreak) {
         switch (blockBreak.action) {
-            case START_DIGGING, FINISHED_DIGGING -> {
+            case START_DIGGING:
+            case FINISHED_DIGGING: {
                 if (shouldCancel(blockBreak.sequence)) {
                     blockBreak.cancel();
                 }
+                break;
             }
-            case CANCELLED_DIGGING -> { // other actions will be checked by BadPacketsL
+            case CANCELLED_DIGGING: { // other actions will be checked by BadPacketsL
                 if (blockBreak.sequence != 0 && flagSequence(0, blockBreak.sequence) && shouldModifyPackets()) {
                     blockBreak.cancel();
                 }

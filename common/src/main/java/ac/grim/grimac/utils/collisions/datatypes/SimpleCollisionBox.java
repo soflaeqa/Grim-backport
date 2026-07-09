@@ -303,12 +303,19 @@ public class SimpleCollisionBox implements CollisionBox {
 
         // Get the direction of block we are trying to connect to -> towards the block that is trying to connect
         final BlockFace faceToSourceConnector = axis.getOppositeFace();
-        return switch (faceToSourceConnector) {
-            case EAST, WEST -> this.minX == 0 && this.maxX == 1;
-            case UP, DOWN -> this.minY == 0 && this.maxY == 1;
-            case NORTH, SOUTH -> this.minZ == 0 && this.maxZ == 1;
-            default -> false;
-        };
+        switch (faceToSourceConnector) {
+    case EAST:
+    case WEST:
+        return this.minX == 0 && this.maxX == 1;
+    case UP:
+    case DOWN:
+        return this.minY == 0 && this.maxY == 1;
+    case NORTH:
+    case SOUTH:
+        return this.minZ == 0 && this.maxZ == 1;
+    default:
+        return false;
+}
 
     }
 
@@ -573,7 +580,7 @@ public class SimpleCollisionBox implements CollisionBox {
         int yRange = yEnd - yStart + 1;
         int zRange = zEnd - zStart + 1;
         int totalVectors = xRange * yRange * zRange;
-        return () -> new AbstractIterator<>() {
+        return () -> new AbstractIterator<Vector3i>() {
             private int index;
 
             @Override
@@ -635,7 +642,7 @@ public class SimpleCollisionBox implements CollisionBox {
         int secondaryCount = secondaryAxis.choose(sizeX, sizeY, sizeZ);
         int tertiaryCount = tertiaryAxis.choose(sizeX, sizeY, sizeZ);
 
-        return () -> new AbstractIterator<>() {
+        return () -> new AbstractIterator<Vector3i>() {
             private int firstIndex;
             private int secondIndex;
             private int thirdIndex;

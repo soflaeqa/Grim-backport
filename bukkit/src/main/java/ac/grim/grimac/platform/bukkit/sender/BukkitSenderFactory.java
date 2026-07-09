@@ -28,7 +28,7 @@ public class BukkitSenderFactory extends SenderFactory<CommandSender> implements
 
     @Override
     protected UUID getUniqueId(CommandSender sender) {
-        return sender instanceof Player player ? player.getUniqueId() : Sender.CONSOLE_UUID;
+        return sender instanceof Player ? ((Player) sender).getUniqueId() : Sender.CONSOLE_UUID;
     }
 
     @Override
@@ -43,8 +43,7 @@ public class BukkitSenderFactory extends SenderFactory<CommandSender> implements
             this.audiences.sender(sender).sendMessage(message);
         } else {
             GrimAPI.INSTANCE.getScheduler().getGlobalRegionScheduler().run(
-                    GrimAPI.INSTANCE.getGrimPlugin(),
-                    () -> this.audiences.sender(sender).sendMessage(message)
+                    GrimAPI.INSTANCE.getGrimPlugin(), () -> this.audiences.sender(sender).sendMessage(message)
             );
         }
     }

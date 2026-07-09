@@ -1,11 +1,8 @@
 package ac.grim.grimac.events.packets;
 
 import ac.grim.grimac.GrimAPI;
+import ac.grim.grimac.manager.SetbackTeleportUtil;
 import ac.grim.grimac.player.GrimPlayer;
-import ac.grim.grimac.utils.data.IntToObjectPair;
-import ac.grim.grimac.utils.data.RotationData;
-import ac.grim.grimac.utils.math.GrimMath;
-import ac.grim.grimac.utils.math.Location;
 import com.github.retrooper.packetevents.PacketEvents;
 import com.github.retrooper.packetevents.event.PacketListenerAbstract;
 import com.github.retrooper.packetevents.event.PacketListenerPriority;
@@ -18,9 +15,12 @@ import com.github.retrooper.packetevents.util.Vector3d;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerPlayerPositionAndLook;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerPlayerRotation;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerVehicleMove;
+import ac.grim.grimac.utils.data.IntToObjectPair;
+import ac.grim.grimac.utils.data.RotationData;
+import ac.grim.grimac.utils.math.GrimMath;
+import ac.grim.grimac.utils.math.Location;
 
 public class PacketServerTeleport extends PacketListenerAbstract {
-
     private static final boolean STUPID_TELEPORT_SYSTEM = PacketEvents.getAPI().getServerManager().getVersion().isNewerThanOrEquals(ServerVersion.V_1_21_2);
 
     public PacketServerTeleport() {
@@ -34,12 +34,9 @@ public class PacketServerTeleport extends PacketListenerAbstract {
             if (player == null) return;
 
             WrapperPlayServerPlayerPositionAndLook teleport = new WrapperPlayServerPlayerPositionAndLook(event);
-
             Vector3d pos = new Vector3d(teleport.getX(), teleport.getY(), teleport.getZ());
 
-            // This is the first packet sent to the client which we need to track
             if (player.getSetbackTeleportUtil().getRequiredSetBack() == null) {
-                // Player teleport event gets called AFTER player join event
                 player.x = teleport.getX();
                 player.y = teleport.getY();
                 player.z = teleport.getZ();
@@ -55,27 +52,19 @@ public class PacketServerTeleport extends PacketListenerAbstract {
                 player.pollData();
             }
 
-            // Convert relative teleports to normal teleports
-            // We have to do this because 1.8 players on 1.9+ get teleports changed by ViaVersion
-            // Additionally, velocity is kept after relative teleports making predictions difficult
-            // The added complexity isn't worth a feature that I have never seen used
-            //
-            // If you do actually need this make an issue on GitHub with an explanation for why
             if (player.getClientVersion().isOlderThanOrEquals(ClientVersion.V_1_8) || player.inVehicle()) {
-                boolean relativeX = teleport.isRelativeFlag(RelativeFlag.X),
-                        relativeY = teleport.isRelativeFlag(RelativeFlag.Y),
-                        relativeZ = teleport.isRelativeFlag(RelativeFlag.Z);
+                boolean relativeX = teleport.isRelativeFlag(RelativeFlag.X);
+                boolean relativeY = teleport.isRelativeFlag(RelativeFlag.Y);
+                boolean relativeZ = teleport.isRelativeFlag(RelativeFlag.Z);
 
                 if (relativeX) {
                     pos = pos.add(new Vector3d(player.x, 0, 0));
                     teleport.setRelative(RelativeFlag.X, false);
                 }
-
                 if (relativeY) {
                     pos = pos.add(new Vector3d(0, player.y, 0));
                     teleport.setRelative(RelativeFlag.Y, false);
                 }
-
                 if (relativeZ) {
                     pos = pos.add(new Vector3d(0, 0, player.z));
                     teleport.setRelative(RelativeFlag.Z, false);
@@ -85,24 +74,21 @@ public class PacketServerTeleport extends PacketListenerAbstract {
                     teleport.setX(pos.getX());
                     teleport.setY(pos.getY());
                     teleport.setZ(pos.getZ());
-
                     event.markForReEncode(true);
                 }
             }
 
             if (STUPID_TELEPORT_SYSTEM && player.inVehicle()) {
-                boolean relativeDeltaX = teleport.isRelativeFlag(RelativeFlag.DELTA_X),
-                        relativeDeltaY = teleport.isRelativeFlag(RelativeFlag.DELTA_Y),
-                        relativeDeltaZ = teleport.isRelativeFlag(RelativeFlag.DELTA_Z);
+                boolean relativeDeltaX = teleport.isRelativeFlag(RelativeFlag.DELTA_X);
+                boolean relativeDeltaY = teleport.isRelativeFlag(RelativeFlag.DELTA_Y);
+                boolean relativeDeltaZ = teleport.isRelativeFlag(RelativeFlag.DELTA_Z);
 
                 if (relativeDeltaX) {
                     teleport.setRelative(RelativeFlag.DELTA_X, false);
                 }
-
                 if (relativeDeltaY) {
                     teleport.setRelative(RelativeFlag.DELTA_Y, false);
                 }
-
                 if (relativeDeltaZ) {
                     teleport.setRelative(RelativeFlag.DELTA_Z, false);
                 }
@@ -113,23 +99,28 @@ public class PacketServerTeleport extends PacketListenerAbstract {
                 }
             }
 
-            // 1.21.2+ client ignore teleports if player is inside vehicle, ABSOLUTE CINEMA MOJANG
-            if (player.getClientVersion().isNewerThanOrEquals(ClientVersion.V_1_21_2) && player.compensatedEntities.serverPlayerVehicle != null) {
-                pos = player.getSetbackTeleportUtil().lastKnownGoodPosition.getPos();
+            if (player.getClientVersion().isNewerThanOrEquals(ClientVersion.V_1_21_2)
+                    && player.compensatedEntities != null
+                    && player.compensatedEntities.serverPlayerVehicle != null) {
+                SetbackTeleportUtil setbackTeleportUtil = player.getSetbackTeleportUtil();
+                if (setbackTeleportUtil != null
+                        && setbackTeleportUtil.lastKnownGoodPosition != null
+                        && setbackTeleportUtil.lastKnownGoodPosition.getPos() != null) {
+                    pos = setbackTeleportUtil.lastKnownGoodPosition.getPos();
+                }
             }
 
             player.sendTransaction();
-            final int lastTransactionSent = player.lastTransactionSent.get();
-            event.getTasksAfterSend().add(player::sendTransaction);
+            int lastTransactionSent = player.lastTransactionSent.get();
+            event.getTasksAfterSend().add(player::pollData);
 
             if (teleport.isDismountVehicle()) {
-                // Remove player from vehicle
                 event.getTasksAfterSend().add(() -> player.compensatedEntities.self.eject());
             }
 
-            // For some reason, teleports on 1.7 are offset by 1.62?
-            if (event.getServerVersion().isOlderThan(ServerVersion.V_1_8))
-                pos = pos.withY(pos.getY() - 1.62);
+            if (event.getServerVersion().isOlderThan(ServerVersion.V_1_8)) {
+                pos = pos.withY(pos.getY() - 1.62D);
+            }
 
             Location target = new Location(null, pos.getX(), pos.getY(), pos.getZ(), teleport.getYaw(), teleport.getPitch());
             player.getSetbackTeleportUtil().addSentTeleport(target, teleport.getDeltaMovement(), lastTransactionSent, teleport.getRelativeFlags(), true, teleport.getTeleportId());
@@ -141,7 +132,6 @@ public class PacketServerTeleport extends PacketListenerAbstract {
 
             WrapperPlayServerPlayerRotation packet = new WrapperPlayServerPlayerRotation(event);
 
-            // I don't want to deal with this, so we'll prevent it
             if (!Float.isFinite(packet.getPitch())) {
                 packet.setPitch(0);
                 event.markForReEncode(true);
@@ -152,14 +142,10 @@ public class PacketServerTeleport extends PacketListenerAbstract {
             }
 
             player.sendTransaction();
-            player.pendingRotations.add(new RotationData(
-                    packet.getYaw(),
-                    packet.isRelativePitch() ? packet.getPitch() : GrimMath.clamp(packet.getPitch() % 360F, -90F, 90F),
-                    packet.isRelativeYaw(),
-                    packet.isRelativePitch(),
-                    player.getLastTransactionSent()
-            ));
-            event.getTasksAfterSend().add(player::sendTransaction);
+            player.pendingRotations.add(new RotationData(packet.getYaw(),
+                    packet.isRelativePitch() ? packet.getPitch() : GrimMath.clamp(packet.getPitch() % 360.0F, -90.0F, 90.0F),
+                    packet.isRelativeYaw(), packet.isRelativePitch(), player.getLastTransactionSent()));
+            event.getTasksAfterSend().add(player::pollData);
         }
 
         if (event.getPacketType() == PacketType.Play.Server.VEHICLE_MOVE) {
@@ -167,11 +153,8 @@ public class PacketServerTeleport extends PacketListenerAbstract {
             if (player == null) return;
 
             player.sendTransaction();
-            event.getTasksAfterSend().add(player::sendTransaction);
-            player.vehicleData.vehicleTeleports.add(new IntToObjectPair<>(
-                    player.lastTransactionSent.get(),
-                    new WrapperPlayServerVehicleMove(event).getPosition()
-            ));
+            event.getTasksAfterSend().add(player::pollData);
+            player.vehicleData.vehicleTeleports.add(new IntToObjectPair<Vector3d>(player.lastTransactionSent.get(), new WrapperPlayServerVehicleMove(event).getPosition()));
         }
     }
 }

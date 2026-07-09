@@ -24,7 +24,7 @@ import java.util.function.Supplier;
 public class CloudCommandService implements CommandService {
 
     public static final CloudKey<Requirements<Sender, SenderRequirement>> REQUIREMENT_KEY
-            = CloudKey.of("requirements", new TypeToken<>() {});
+            = CloudKey.of("requirements", new TypeToken<Requirements<Sender, SenderRequirement>>() {});
 
     public static final RequirementApplicableFactory<Sender, SenderRequirement> REQUIREMENT_FACTORY
             = RequirementApplicable.factory(REQUIREMENT_KEY);
@@ -88,8 +88,8 @@ public class CloudCommandService implements CommandService {
     }
 
     private static boolean isHistoryInput(String rawInput) {
-        String input = rawInput.strip();
-        if (input.startsWith("/")) input = input.substring(1).strip();
+        String input = rawInput.trim();
+        if (input.startsWith("/")) input = input.substring(1).trim();
         String[] tokens = input.toLowerCase(Locale.ROOT).split("\\s+");
         return tokens.length >= 2
                 && (tokens[0].equals("grim") || tokens[0].equals("grimac"))

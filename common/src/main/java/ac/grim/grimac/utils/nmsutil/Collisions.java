@@ -41,6 +41,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 @UtilityClass
@@ -595,7 +596,7 @@ public final class Collisions {
     }
 
     public static void resolveBlockEffects(GrimPlayer player, Vector3d from, Vector3d to) {
-        Collisions.resolveBlockEffects(player, List.of(new GrimPlayer.Movement(from, to)));
+        Collisions.resolveBlockEffects(player, Collections.singletonList(new GrimPlayer.Movement(from, to)));
     }
 
     public static void resolveBlockEffects(GrimPlayer player, List<GrimPlayer.Movement> movements) {

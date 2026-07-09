@@ -80,7 +80,8 @@ public class CompensatedEntities {
         PacketEntity entity = entityMap.remove(entityID);
         if (entity == null) return;
 
-        if (entity instanceof PacketEntityEnderDragon dragon) {
+        if (entity instanceof PacketEntityEnderDragon) {
+            PacketEntityEnderDragon dragon = (PacketEntityEnderDragon) entity;
             for (int i = 1; i < dragon.getParts().size() + 1; i++) {
                 entityMap.remove(entityID + i);
             }
@@ -148,7 +149,7 @@ public class CompensatedEntities {
             }
 
             final Optional<ValuedAttribute> valuedAttribute = entity.getAttribute(attribute);
-            if (valuedAttribute.isEmpty()) {
+            if (!valuedAttribute.isPresent()) {
                 // Not an attribute we want to track
                 continue;
             }
@@ -280,7 +281,8 @@ public class CompensatedEntities {
             }
         }
 
-        if (entity instanceof PacketEntitySizeable sizeable) {
+        if (entity instanceof PacketEntitySizeable) {
+            PacketEntitySizeable sizeable = (PacketEntitySizeable) entity;
             int id;
             if (PacketEvents.getAPI().getServerManager().getVersion().isOlderThanOrEquals(ServerVersion.V_1_8_8)) {
                 id = 16;
@@ -307,7 +309,8 @@ public class CompensatedEntities {
             }
         }
 
-        if (entity instanceof PacketEntityShulker shulker) {
+        if (entity instanceof PacketEntityShulker) {
+            PacketEntityShulker shulker = (PacketEntityShulker) entity;
             int id;
 
             if (PacketEvents.getAPI().getServerManager().getVersion().isOlderThanOrEquals(ServerVersion.V_1_9_4)) {
@@ -340,7 +343,8 @@ public class CompensatedEntities {
             }
         }
 
-        if (entity instanceof PacketEntityRideable rideable) {
+        if (entity instanceof PacketEntityRideable) {
+            PacketEntityRideable rideable = (PacketEntityRideable) entity;
             int offset = 0;
             if (PacketEvents.getAPI().getServerManager().getVersion().isOlderThanOrEquals(ServerVersion.V_1_8_8)) {
                 if (entity.getType() == EntityTypes.PIG) {
@@ -400,7 +404,8 @@ public class CompensatedEntities {
             }
         }
 
-        if (entity instanceof PacketEntityHorse horse) {
+        if (entity instanceof PacketEntityHorse) {
+            PacketEntityHorse horse = (PacketEntityHorse) entity;
             if (PacketEvents.getAPI().getServerManager().getVersion().isNewerThanOrEquals(ServerVersion.V_1_9_4)) {
                 int offset = 0;
 
@@ -425,7 +430,8 @@ public class CompensatedEntities {
 
                 // track camel dashing
                 if (PacketEvents.getAPI().getServerManager().getVersion().isNewerThanOrEquals(ServerVersion.V_1_20)) {
-                    if (entity instanceof PacketEntityCamel camel) {
+                    if (entity instanceof PacketEntityCamel) {
+                        PacketEntityCamel camel = (PacketEntityCamel) entity;
                         EntityData<?> entityData = WatchableIndexUtil.getIndex(watchableObjects, 18 + ageableOffset);
                         if (entityData != null) {
                             camel.setDashing((boolean) entityData.getValue());
@@ -450,7 +456,8 @@ public class CompensatedEntities {
             }
         }
 
-        if (entity instanceof PacketEntityNautilus nautilus) {
+        if (entity instanceof PacketEntityNautilus) {
+            PacketEntityNautilus nautilus = (PacketEntityNautilus) entity;
             EntityData<?> entityData = WatchableIndexUtil.getIndex(watchableObjects, 19 + ageableOffset);
             if (entityData != null) {
                 nautilus.setDashing((boolean) entityData.getValue());
@@ -500,7 +507,8 @@ public class CompensatedEntities {
             }
         }
 
-        if (entity instanceof PacketEntityHook hook) {
+        if (entity instanceof PacketEntityHook) {
+            PacketEntityHook hook = (PacketEntityHook) entity;
             int index;
             if (PacketEvents.getAPI().getServerManager().getVersion().isOlderThanOrEquals(ServerVersion.V_1_9_4)) {
                 index = 5;
@@ -563,9 +571,11 @@ public class CompensatedEntities {
             }
         }
 
-        if (entity instanceof PacketEntitySkeleton skeleton && PacketEvents.getAPI().getServerManager().getVersion().isOlderThanOrEquals(ServerVersion.V_1_8_8)) {
+        if (entity instanceof PacketEntitySkeleton && PacketEvents.getAPI().getServerManager().getVersion().isOlderThanOrEquals(ServerVersion.V_1_8_8)) {
+            PacketEntitySkeleton skeleton = (PacketEntitySkeleton) entity;
             EntityData<?> skeletonTypeObject = WatchableIndexUtil.getIndex(watchableObjects, 13);
-            if (skeletonTypeObject != null && skeletonTypeObject.getValue() instanceof Byte skeletonType) {
+            if (skeletonTypeObject != null && skeletonTypeObject.getValue() instanceof Byte) {
+                Byte skeletonType = (Byte) skeletonTypeObject.getValue();
                 skeleton.isWitherSkeleton = skeletonType == 1;
             }
         }

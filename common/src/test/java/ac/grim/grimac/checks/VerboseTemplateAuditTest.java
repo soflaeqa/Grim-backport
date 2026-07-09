@@ -7,11 +7,14 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -46,12 +49,8 @@ import static org.junit.jupiter.api.Assertions.fail;
 class VerboseTemplateAuditTest {
 
     /** file name -> reason; chains here are validated at runtime by Verbose.Writer instead. */
-    private static final Map<String, String> PARTIALLY_AUDITED = Map.of(
-            "ExploitB.java", "flagLiteral passes the shape selector as a variable",
-            "PacketOrderC.java", "writeKind passes the shape selector as a variable",
-            "MultiActionsF.java", "writeAction passes the shape selector as a variable",
-            "MultiActionsG.java", "writeAction passes the shape selector as a variable",
-            "PacketOrderK.java", "writer extended conditionally after write(buf, kind)");
+    private static final Map<String, String> PARTIALLY_AUDITED = partiallyAudited();
+
 
     private static final Map<String, List<VerboseSchema.TypeTag>> WRITER_METHODS = writerMethods();
 
@@ -59,7 +58,7 @@ class VerboseTemplateAuditTest {
 
     @BeforeAll
     static void setUp() throws IOException {
-        checksRoot = Path.of("src/main/java/ac/grim/grimac/checks").toAbsolutePath();
+        checksRoot = Paths.get("src/main/java/ac/grim/grimac/checks").toAbsolutePath();
         assertTrue(Files.isDirectory(checksRoot), "expected to run from the common module dir");
         registerStandInTags();
     }
@@ -93,7 +92,7 @@ class VerboseTemplateAuditTest {
             String fileName = file.getFileName().toString();
             if (entry.getValue().size() != 1) continue; // multiple V constants in one file: not used today
             Verbose verbose = Verbose.of(entry.getValue().get(0));
-            String source = Files.readString(file);
+            String source = readString(file);
 
             for (Chain chain : extractChains(source)) {
                 Integer shape = chain.shapeExpr == null ? null : resolveShape(source, chain.shapeExpr);
@@ -154,7 +153,7 @@ class VerboseTemplateAuditTest {
     void standInTagsMirrorVerboseCodecs() throws IOException {
         // If VerboseCodecs gains/changes a tag, registerStandInTags() must learn it,
         // otherwise template parsing here would diverge from runtime.
-        String source = Files.readString(checksRoot.resolve("impl/verbose/VerboseCodecs.java"));
+        String source = readString(checksRoot.resolve("impl/verbose/VerboseCodecs.java"));
         Set<String> registered = new HashSet<>();
         Matcher m = Pattern.compile("register(?:Enum|EnumLower)?\\(\\s*\"([a-z_0-9]+)\"").matcher(source);
         while (m.find()) registered.add(m.group(1));
@@ -173,13 +172,13 @@ class VerboseTemplateAuditTest {
         Map<String, List<VerboseSchema.TypeTag>> tags = new LinkedHashMap<>();
         for (String n : new String[]{"face", "digging", "digging_lower", "clicktype",
                 "clicktype_lower", "entityaction", "hand", "entity"}) {
-            tags.put(n, List.of(VerboseSchema.TypeTag.VI));
+            tags.put(n, listOf(VerboseSchema.TypeTag.VI));
         }
-        tags.put("block", List.of(VerboseSchema.TypeTag.ZZ));
-        tags.put("item", List.of(VerboseSchema.TypeTag.ZZ));
-        tags.put("packet", List.of(VerboseSchema.TypeTag.ZZ));
-        tags.put("offset", List.of(VerboseSchema.TypeTag.F64));
-        tags.put("stdnum", List.of(VerboseSchema.TypeTag.F64));
+        tags.put("block", listOf(VerboseSchema.TypeTag.ZZ));
+        tags.put("item", listOf(VerboseSchema.TypeTag.ZZ));
+        tags.put("packet", listOf(VerboseSchema.TypeTag.ZZ));
+        tags.put("offset", listOf(VerboseSchema.TypeTag.F64));
+        tags.put("stdnum", listOf(VerboseSchema.TypeTag.F64));
         return tags;
     }
 
@@ -193,25 +192,27 @@ class VerboseTemplateAuditTest {
 
     private static Map<String, List<VerboseSchema.TypeTag>> writerMethods() {
         Map<String, List<VerboseSchema.TypeTag>> m = new HashMap<>();
-        m.put("f64", List.of(VerboseSchema.TypeTag.F64));
-        m.put("f32", List.of(VerboseSchema.TypeTag.F32));
-        m.put("uint", List.of(VerboseSchema.TypeTag.VI));
-        m.put("sint", List.of(VerboseSchema.TypeTag.ZZ));
-        m.put("ulong", List.of(VerboseSchema.TypeTag.VL));
-        m.put("bool", List.of(VerboseSchema.TypeTag.BOOL));
-        m.put("str", List.of(VerboseSchema.TypeTag.STR));
-        m.put("mcPos", List.of(VerboseSchema.TypeTag.VL, VerboseSchema.TypeTag.ZZ));
-        m.put("cursor", List.of(VerboseSchema.TypeTag.F32, VerboseSchema.TypeTag.F32, VerboseSchema.TypeTag.F32));
-        m.put("slong", List.of(VerboseSchema.TypeTag.ZZ, VerboseSchema.TypeTag.ZZ));
-        m.put("end", List.of());
+        m.put("f64", listOf(VerboseSchema.TypeTag.F64));
+        m.put("f32", listOf(VerboseSchema.TypeTag.F32));
+        m.put("uint", listOf(VerboseSchema.TypeTag.VI));
+        m.put("sint", listOf(VerboseSchema.TypeTag.ZZ));
+        m.put("ulong", listOf(VerboseSchema.TypeTag.VL));
+        m.put("bool", listOf(VerboseSchema.TypeTag.BOOL));
+        m.put("str", listOf(VerboseSchema.TypeTag.STR));
+        m.put("mcPos", listOf(VerboseSchema.TypeTag.VL, VerboseSchema.TypeTag.ZZ));
+        m.put("cursor", listOf(VerboseSchema.TypeTag.F32, VerboseSchema.TypeTag.F32, VerboseSchema.TypeTag.F32));
+        m.put("slong", listOf(VerboseSchema.TypeTag.ZZ, VerboseSchema.TypeTag.ZZ));
+        m.put("end", listOf());
         return m;
     }
 
     private static Map<Path, List<String>> templatesByFile() throws IOException {
         Map<Path, List<String>> result = new LinkedHashMap<>();
         try (Stream<Path> files = Files.walk(checksRoot)) {
-            for (Path file : files.filter(p -> p.toString().endsWith(".java")).toList()) {
-                String source = Files.readString(file);
+            Iterator<Path> iterator = files.filter(p -> p.toString().endsWith(".java")).iterator();
+            while (iterator.hasNext()) {
+                Path file = iterator.next();
+                String source = readString(file);
                 List<String> templates = extractTemplates(source);
                 if (!templates.isEmpty()) result.put(file, templates);
             }
@@ -256,11 +257,21 @@ class VerboseTemplateAuditTest {
             if (c == '\\' && i + 1 < s.length()) {
                 char n = s.charAt(++i);
                 switch (n) {
-                    case 'n' -> out.append('\n');
-                    case 't' -> out.append('\t');
-                    case '\\' -> out.append('\\');
-                    case '"' -> out.append('"');
-                    default -> out.append('\\').append(n); // template escapes like \[ stay
+                    case 'n':
+                        out.append('\n');
+                        break;
+                    case 't':
+                        out.append('\t');
+                        break;
+                    case '\\':
+                        out.append('\\');
+                        break;
+                    case '"':
+                        out.append('"');
+                        break;
+                    default:
+                        out.append('\\').append(n); // template escapes like \[ stay
+                        break;
                 }
             } else {
                 out.append(c);
@@ -270,7 +281,22 @@ class VerboseTemplateAuditTest {
     }
 
     /** A writer chain anchored at {@code V.write(verbose()} with its method names in order. */
-    private record Chain(String shapeExpr, List<String> methods) {
+    private static final class Chain {
+        private final String shapeExpr;
+        private final List<String> methods;
+
+        private Chain(String shapeExpr, List<String> methods) {
+            this.shapeExpr = shapeExpr;
+            this.methods = methods;
+        }
+
+        public String shapeExpr() {
+            return shapeExpr;
+        }
+
+        public List<String> methods() {
+            return methods;
+        }
     }
 
     static List<Chain> extractChains(String source) {
@@ -351,10 +377,41 @@ class VerboseTemplateAuditTest {
     }
 
     private static List<VerboseSchema.TypeTag> typesOf(List<VerboseSchema.Field> fields) {
-        return fields.stream().map(VerboseSchema.Field::type).toList();
+        List<VerboseSchema.TypeTag> result = new ArrayList<>();
+        for (VerboseSchema.Field field : fields) {
+            result.add(field.type());
+        }
+        return result;
     }
 
     private static List<String> names(List<VerboseSchema.TypeTag> tags) {
-        return tags.stream().map(VerboseSchema.TypeTag::wireName).toList();
+        List<String> result = new ArrayList<>();
+        for (VerboseSchema.TypeTag tag : tags) {
+            result.add(tag.wireName());
+        }
+        return result;
+    }
+
+    private static String readString(Path path) throws IOException {
+        return new String(Files.readAllBytes(path), StandardCharsets.UTF_8);
+    }
+
+    private static Map<String, String> partiallyAudited() {
+        Map<String, String> map = new LinkedHashMap<>();
+        map.put("ExploitB.java", "flagLiteral passes the shape selector as a variable");
+        map.put("PacketOrderC.java", "writeKind passes the shape selector as a variable");
+        map.put("MultiActionsF.java", "writeAction passes the shape selector as a variable");
+        map.put("MultiActionsG.java", "writeAction passes the shape selector as a variable");
+        map.put("PacketOrderK.java", "writer extended conditionally after write(buf, kind)");
+        return map;
+    }
+
+    @SafeVarargs
+    private static <T> List<T> listOf(T... values) {
+        List<T> list = new ArrayList<>();
+        for (T value : values) {
+            list.add(value);
+        }
+        return list;
     }
 }

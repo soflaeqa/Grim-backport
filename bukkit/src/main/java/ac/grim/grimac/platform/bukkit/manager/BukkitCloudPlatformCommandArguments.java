@@ -17,8 +17,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 public class BukkitCloudPlatformCommandArguments implements CloudPlatformCommandArguments {
-
-    private final BukkitPlayerSelectorParser<Sender> bukkitPlayerSelectorParser = new BukkitPlayerSelectorParser<>();
+    private final BukkitPlayerSelectorParser bukkitPlayerSelectorParser = new BukkitPlayerSelectorParser<>();
 
     @Override
     public ParserDescriptor<Sender, PlayerSelector> singlePlayerSelectorParser() {
@@ -31,14 +30,14 @@ public class BukkitCloudPlatformCommandArguments implements CloudPlatformCommand
             Collection<? extends Player> players = Bukkit.getOnlinePlayers();
             List<Suggestion> suggestions = new ArrayList<>(players.size());
 
-            Player sender = context.get(BukkitCommandContextKeys.BUKKIT_COMMAND_SENDER) instanceof Player player ? player : null;
+            Object commandSender = context.get(BukkitCommandContextKeys.BUKKIT_COMMAND_SENDER);
+            Player sender = commandSender instanceof Player ? (Player) commandSender : null;
 
             for (Player player : players) {
                 if (sender == null || sender.canSee(player)) {
                     suggestions.add(Suggestion.suggestion(player.getName()));
                 }
             }
-
             return CompletableFuture.completedFuture(suggestions);
         };
     }

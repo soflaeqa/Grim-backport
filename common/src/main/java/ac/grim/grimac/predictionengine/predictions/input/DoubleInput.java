@@ -4,7 +4,29 @@ import ac.grim.grimac.player.GrimPlayer;
 import ac.grim.grimac.utils.math.Vector3dm;
 import ac.grim.grimac.utils.math.VectorUtils;
 
-public record DoubleInput(double sideways, double vertical, double forward) implements Input {
+public final class DoubleInput implements Input {
+    private final double sideways;
+    private final double vertical;
+    private final double forward;
+
+    public DoubleInput(double sideways, double vertical, double forward) {
+        this.sideways = sideways;
+        this.vertical = vertical;
+        this.forward = forward;
+    }
+
+    public double sideways() {
+        return sideways;
+    }
+
+    public double vertical() {
+        return vertical;
+    }
+
+    public double forward() {
+        return forward;
+    }
+
     @Override
     public Vector3dm vector() {
         return new Vector3dm(sideways, vertical, forward);

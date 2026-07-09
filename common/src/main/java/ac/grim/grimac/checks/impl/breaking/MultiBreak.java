@@ -12,6 +12,7 @@ import com.github.retrooper.packetevents.event.PacketReceiveEvent;
 import com.github.retrooper.packetevents.protocol.player.DiggingAction;
 import com.github.retrooper.packetevents.protocol.world.BlockFace;
 import com.github.retrooper.packetevents.util.Vector3i;
+import lombok.var;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -78,6 +79,33 @@ public class MultiBreak extends Check implements BlockBreakCheck {
         flags.clear();
     }
 
-    private record FlagData(int face, int previousFace, Vector3i pos, Vector3i previousPos) {
+    private static final class FlagData {
+        private final int face;
+        private final int previousFace;
+        private final Vector3i pos;
+        private final Vector3i previousPos;
+
+        private FlagData(int face, int previousFace, Vector3i pos, Vector3i previousPos) {
+            this.face = face;
+            this.previousFace = previousFace;
+            this.pos = pos;
+            this.previousPos = previousPos;
+        }
+
+        public int face() {
+            return face;
+        }
+
+        public int previousFace() {
+            return previousFace;
+        }
+
+        public Vector3i pos() {
+            return pos;
+        }
+
+        public Vector3i previousPos() {
+            return previousPos;
+        }
     }
 }

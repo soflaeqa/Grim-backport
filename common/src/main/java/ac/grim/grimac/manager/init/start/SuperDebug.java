@@ -283,7 +283,47 @@ public final class SuperDebug extends Check implements PostPredictionCheck {
         return new Vector3dm(bestTheoreticalX, 0, bestTheoreticalZ);
     }
 
-    private record Location(double x, double y, double z, float xRot, float yRot, String world) {
+    private static final class Location {
+        private final double x;
+        private final double y;
+        private final double z;
+        private final float xRot;
+        private final float yRot;
+        private final String world;
+
+        private Location(double x, double y, double z, float xRot, float yRot, String world) {
+            this.x = x;
+            this.y = y;
+            this.z = z;
+            this.xRot = xRot;
+            this.yRot = yRot;
+            this.world = world;
+        }
+
+        public double x() {
+            return x;
+        }
+
+        public double y() {
+            return y;
+        }
+
+        public double z() {
+            return z;
+        }
+
+        public float xRot() {
+            return xRot;
+        }
+
+        public float yRot() {
+            return yRot;
+        }
+
+        public String world() {
+            return world;
+        }
+
         @Override
         public @NotNull String toString() {
             return "x: " + x + " y: " + y + " z: " + z + " xRot: " + xRot + " yRot: " + yRot + " world: " + world;

@@ -31,6 +31,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletionException;
@@ -280,20 +281,70 @@ final class V2InstanceRegistry {
             throw new RuntimeException(action + " interrupted", e);
         } catch (ExecutionException e) {
             Throwable cause = e.getCause();
-            if (cause instanceof CompletionException ce && ce.getCause() != null) cause = ce.getCause();
+            if (cause instanceof CompletionException && ((CompletionException) cause).getCause() != null) cause = ((CompletionException) cause).getCause();
             throw new RuntimeException(action + " failed", cause);
         }
     }
 
-    record StartupClaim(
-            boolean storageEnabled,
-            boolean duplicate,
-            @NotNull UUID startupId,
-            @NotNull UUID instanceId,
-            @Nullable UUID conflictingStartupId,
-            long heartbeatAgeMs,
-            long sessionsClosed,
-            @NotNull String warningMessage) {
+    static final class StartupClaim {
+        private final boolean storageEnabled;
+        private final boolean duplicate;
+        private final @NotNull UUID startupId;
+        private final @NotNull UUID instanceId;
+        private final @Nullable UUID conflictingStartupId;
+        private final long heartbeatAgeMs;
+        private final long sessionsClosed;
+        private final @NotNull String warningMessage;
+
+        StartupClaim(boolean storageEnabled,
+                     boolean duplicate,
+                     @NotNull UUID startupId,
+                     @NotNull UUID instanceId,
+                     @Nullable UUID conflictingStartupId,
+                     long heartbeatAgeMs,
+                     long sessionsClosed,
+                     @NotNull String warningMessage) {
+            this.storageEnabled = storageEnabled;
+            this.duplicate = duplicate;
+            this.startupId = startupId;
+            this.instanceId = instanceId;
+            this.conflictingStartupId = conflictingStartupId;
+            this.heartbeatAgeMs = heartbeatAgeMs;
+            this.sessionsClosed = sessionsClosed;
+            this.warningMessage = warningMessage;
+        }
+
+        boolean storageEnabled() {
+            return storageEnabled;
+        }
+
+        boolean duplicate() {
+            return duplicate;
+        }
+
+        @NotNull UUID startupId() {
+            return startupId;
+        }
+
+        @NotNull UUID instanceId() {
+            return instanceId;
+        }
+
+        @Nullable UUID conflictingStartupId() {
+            return conflictingStartupId;
+        }
+
+        long heartbeatAgeMs() {
+            return heartbeatAgeMs;
+        }
+
+        long sessionsClosed() {
+            return sessionsClosed;
+        }
+
+        @NotNull String warningMessage() {
+            return warningMessage;
+        }
 
         static @NotNull StartupClaim enabled(
                 @NotNull UUID startupId,
@@ -312,6 +363,39 @@ final class V2InstanceRegistry {
                 @NotNull String message) {
             return new StartupClaim(false, true, startupId, instanceId, conflictingStartupId,
                     heartbeatAgeMs, 0L, message);
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (!(o instanceof StartupClaim)) return false;
+            StartupClaim that = (StartupClaim) o;
+            return storageEnabled == that.storageEnabled
+                    && duplicate == that.duplicate
+                    && heartbeatAgeMs == that.heartbeatAgeMs
+                    && sessionsClosed == that.sessionsClosed
+                    && Objects.equals(startupId, that.startupId)
+                    && Objects.equals(instanceId, that.instanceId)
+                    && Objects.equals(conflictingStartupId, that.conflictingStartupId)
+                    && Objects.equals(warningMessage, that.warningMessage);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(storageEnabled, duplicate, startupId, instanceId, conflictingStartupId,
+                    heartbeatAgeMs, sessionsClosed, warningMessage);
+        }
+
+        @Override
+        public String toString() {
+            return "StartupClaim[storageEnabled=" + storageEnabled
+                    + ", duplicate=" + duplicate
+                    + ", startupId=" + startupId
+                    + ", instanceId=" + instanceId
+                    + ", conflictingStartupId=" + conflictingStartupId
+                    + ", heartbeatAgeMs=" + heartbeatAgeMs
+                    + ", sessionsClosed=" + sessionsClosed
+                    + ", warningMessage=" + warningMessage + "]";
         }
     }
 
@@ -342,7 +426,8 @@ final class V2InstanceRegistry {
         }
 
         @Override
-        public @NotNull <R> Page<R> read(@NotNull Category<?> cat, @NotNull Query<R> query) throws BackendException {
+        @SuppressWarnings({"rawtypes", "unchecked"})
+        public @NotNull Page read(@NotNull Category cat, @NotNull Query query) throws BackendException {
             throw new BackendException("sentinel backend has no legacy read path");
         }
 

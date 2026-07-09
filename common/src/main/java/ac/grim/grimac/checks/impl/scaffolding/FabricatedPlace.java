@@ -64,8 +64,7 @@ public class FabricatedPlace extends BlockPlaceCheck {
 
             // Alert logic
             double limit = minBound - MAX_DOUBLE_ERROR;
-            var buf = V.write(verbose()).cursor(cursor.x, cursor.y, cursor.z).f64(limit);
-            if (flag(buf) && shouldModifyPackets() && shouldCancel()) {
+            if (flag(V.write(verbose()).cursor(cursor.x, cursor.y, cursor.z).f64(limit)) && shouldModifyPackets() && shouldCancel()) {
                 place.resync();
             }
             return;
@@ -88,8 +87,7 @@ public class FabricatedPlace extends BlockPlaceCheck {
 
             // Alert logic
             double limit = maxBound + upperTolerance;
-            var buf = V.write(verbose()).cursor(cursor.x, cursor.y, cursor.z).f64(limit);
-            if (flag(buf) && shouldModifyPackets() && shouldCancel()) {
+            if (flag(V.write(verbose()).cursor(cursor.x, cursor.y, cursor.z).f64(limit)) && shouldModifyPackets() && shouldCancel()) {
                 place.resync();
             }
         }

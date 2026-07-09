@@ -9,7 +9,6 @@ import ac.grim.grimac.player.GrimPlayer;
 import ac.grim.grimac.utils.anticheat.LogUtil;
 import ac.grim.grimac.utils.anticheat.MessageUtil;
 import ac.grim.grimac.utils.common.arguments.CommonGrimArguments;
-import ac.grim.grimac.utils.data.Pair;
 import ac.grim.grimac.utils.data.webhook.discord.CompiledDiscordTemplate;
 import ac.grim.grimac.utils.data.webhook.discord.Embed;
 import ac.grim.grimac.utils.data.webhook.discord.EmbedField;
@@ -20,13 +19,17 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Unmodifiable;
 
-import java.awt.*;
+import java.awt.Color;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
 import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.time.Duration;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,15 +37,13 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
-import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
 public class DiscordManager implements StartableInitable, ReloadableInitable {
-    private static final Predicate<String> WEBHOOK_REGEX = Pattern.compile("^https://(?:canary\\.)?discord\\.com/api(?:/v\\d+)?/webhooks/\\d+/[\\w-]+(\\?thread_id=\\d+)?$").asMatchPredicate();
-    private static final Predicate<String> HTTPS_URL_REGEX = Pattern.compile("^https://[^/\\s]+/\\S+$").asMatchPredicate();
-    private static final Duration timeout = Duration.ofMillis(CommonGrimArguments.URL_TIMEOUT.value());
-    private static final HttpClient client = HttpClient.newBuilder().connectTimeout(timeout).build();
-    private static final ConcurrentLinkedDeque<Pair<HttpRequest, CompletableFuture<Boolean>>> requests = new ConcurrentLinkedDeque<>();
+    private static final Pattern WEBHOOK_REGEX = Pattern.compile("^https://(?:canary\\.)?discord\\.com/api(?:/v\\d+)?/webhooks/\\d+/[\\w-]+(\\?thread_id=\\d+)?$");
+    private static final Pattern HTTPS_URL_REGEX = Pattern.compile("^https://[^/\\s]+/\\S+$");
+    private static final int timeoutMillis = CommonGrimArguments.URL_TIMEOUT.value();
+    private static final ConcurrentLinkedDeque<PendingWebhookRequest> requests = new ConcurrentLinkedDeque<>();
     private static final AtomicBoolean taskStarted = new AtomicBoolean();
     private static final AtomicBoolean sending = new AtomicBoolean();
     private static long rateLimitedUntil;
@@ -62,7 +63,7 @@ public class DiscordManager implements StartableInitable, ReloadableInitable {
 
     private static String validatedConfigURL(String configPath, String defaultURL) {
         String url = GrimAPI.INSTANCE.getConfigManager().getConfig().getStringElse("embed-image-url", defaultURL);
-        if (url == null || url.isBlank()) return null;
+        if (url == null || url.trim().isEmpty()) return null;
         if (URL_PATTERN.matcher(url).matches()) {
             return url;
         } else {
@@ -94,7 +95,7 @@ public class DiscordManager implements StartableInitable, ReloadableInitable {
             if (webhook.isEmpty()) {
                 url = null;
             } else if (strictValidation) {
-                if (!WEBHOOK_REGEX.test(webhook)) {
+                if (!WEBHOOK_REGEX.matcher(webhook).matches()) {
                     LogUtil.error("Discord webhook URL does not match expected format"
                             + " (https://discord.com/api/webhooks/<id>/<token>): " + webhook);
                     LogUtil.error("If you are using a proxy or custom endpoint,"
@@ -104,7 +105,7 @@ public class DiscordManager implements StartableInitable, ReloadableInitable {
                     url = new URI(webhook);
                 }
             } else {
-                if (!HTTPS_URL_REGEX.test(webhook)) {
+                if (!HTTPS_URL_REGEX.matcher(webhook).matches()) {
                     LogUtil.error("Discord webhook URL is not a valid HTTPS URL: " + webhook);
                     url = null;
                 } else {
@@ -143,7 +144,7 @@ public class DiscordManager implements StartableInitable, ReloadableInitable {
 
     @Contract(value = " -> new", pure = true)
     private @NotNull @Unmodifiable List<@NotNull String> getDefaultContents() {
-        return List.of(
+        return Collections.unmodifiableList(Arrays.asList(
                 "**Player**: `%player%`",
                 "**Check**: %check%",
                 "**Violations**: %violations%",
@@ -151,7 +152,7 @@ public class DiscordManager implements StartableInitable, ReloadableInitable {
                 "**Brand**: `%brand%`",
                 "**Ping**: %ping%",
                 "**TPS**: %tps%"
-        );
+        ));
     }
 
     public void sendAlert(@NotNull GrimPlayer player, String verbose, String checkName, int violations) {
@@ -190,16 +191,8 @@ public class DiscordManager implements StartableInitable, ReloadableInitable {
     public CompletableFuture<Boolean> sendWebhookMessage(WebhookMessage message) {
         if (isDisabled()) return CompletableFuture.completedFuture(false);
 
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(url)
-                .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(message.toJson().toString()))
-                .timeout(timeout)
-                .build();
-
         CompletableFuture<Boolean> future = new CompletableFuture<>();
-
-        requests.add(new Pair<>(request, future));
+        requests.add(new PendingWebhookRequest(url, message.toJson().toString(), future));
 
         if (!taskStarted.getAndSet(true)) {
             // there's probably a better way to handle rate limits, but this works, so whatever.
@@ -214,33 +207,137 @@ public class DiscordManager implements StartableInitable, ReloadableInitable {
     }
 
     private static void tick() {
-        Pair<HttpRequest, CompletableFuture<Boolean>> pair = requests.peek();
-        if (pair != null && rateLimitedUntil < System.currentTimeMillis() && !sending.getAndSet(true)) {
-            HttpRequest request = pair.first();
-            client.sendAsync(request, HttpResponse.BodyHandlers.ofString()).whenComplete((response, throwable) -> {
-                if (throwable != null) {
+        final PendingWebhookRequest request = requests.peek();
+        if (request != null && rateLimitedUntil < System.currentTimeMillis() && !sending.getAndSet(true)) {
+            try {
+                HttpResult response = sendBlocking(request);
+
+                if (response.statusCode == 429) {
+                    rateLimitedUntil = Math.max(parseRateLimitUntil(response), rateLimitedUntil);
                     sending.set(false);
-                    LogUtil.error("Exception caught while sending a Discord webhook alert", throwable);
                     return;
                 }
 
-                if (response != null && response.statusCode() == 429) {
-                    sending.set(false);
-                    rateLimitedUntil = Math.max(response.headers().firstValueAsLong("X-RateLimit-Reset").getAsLong() * 1000, rateLimitedUntil);
-                    return;
-                }
-
-                requests.remove(pair);
+                requests.remove(request);
                 sending.set(false);
 
                 // TODO: handle 503 (Service Unavailable)?
-                if (response != null && response.statusCode() >= 400) {
-                    LogUtil.error("Encountered status code " + response.statusCode() + " with body " + response.body() + " and headers " + response.headers().map() + " while sending a Discord webhook alert.");
-                    pair.second().complete(false);
+                if (response.statusCode >= 400) {
+                    LogUtil.error("Encountered status code " + response.statusCode + " with body " + response.body + " and headers " + response.headers + " while sending a Discord webhook alert.");
+                    request.future.complete(false);
                 } else {
-                    pair.second().complete(true);
+                    request.future.complete(true);
                 }
-            });
+            } catch (Throwable throwable) {
+                sending.set(false);
+                LogUtil.error("Exception caught while sending a Discord webhook alert", throwable);
+            }
+        }
+    }
+
+    private static HttpResult sendBlocking(PendingWebhookRequest request) throws IOException {
+        HttpURLConnection connection = (HttpURLConnection) request.url.toURL().openConnection();
+        connection.setConnectTimeout(timeoutMillis);
+        connection.setReadTimeout(timeoutMillis);
+        connection.setRequestMethod("POST");
+        connection.setDoOutput(true);
+        connection.setRequestProperty("Content-Type", "application/json");
+
+        byte[] body = request.body.getBytes(StandardCharsets.UTF_8);
+        connection.setFixedLengthStreamingMode(body.length);
+
+        OutputStream output = null;
+        try {
+            output = connection.getOutputStream();
+            output.write(body);
+        } finally {
+            if (output != null) output.close();
+        }
+
+        int statusCode = connection.getResponseCode();
+        String responseBody = readBody(connection);
+        Map<String, List<String>> headers = connection.getHeaderFields();
+        connection.disconnect();
+        return new HttpResult(statusCode, responseBody, headers);
+    }
+
+    private static String readBody(HttpURLConnection connection) throws IOException {
+        InputStream input = connection.getErrorStream();
+        if (input == null) {
+            try {
+                input = connection.getInputStream();
+            } catch (IOException ignored) {
+                return "";
+            }
+        }
+
+        try {
+            ByteArrayOutputStream output = new ByteArrayOutputStream();
+            byte[] buffer = new byte[4096];
+            int read;
+            while ((read = input.read(buffer)) != -1) {
+                output.write(buffer, 0, read);
+            }
+            return new String(output.toByteArray(), StandardCharsets.UTF_8);
+        } finally {
+            input.close();
+        }
+    }
+
+    private static long parseRateLimitUntil(HttpResult response) {
+        long now = System.currentTimeMillis();
+
+        String reset = firstHeader(response.headers, "X-RateLimit-Reset");
+        if (reset != null) {
+            try {
+                return (long) (Double.parseDouble(reset) * 1000L);
+            } catch (NumberFormatException ignored) {
+            }
+        }
+
+        String retryAfter = firstHeader(response.headers, "Retry-After");
+        if (retryAfter != null) {
+            try {
+                return now + (long) (Double.parseDouble(retryAfter) * 1000L);
+            } catch (NumberFormatException ignored) {
+            }
+        }
+
+        return now + 5000L;
+    }
+
+    private static String firstHeader(Map<String, List<String>> headers, String name) {
+        if (headers == null) return null;
+        for (Map.Entry<String, List<String>> entry : headers.entrySet()) {
+            if (entry.getKey() != null && entry.getKey().equalsIgnoreCase(name)) {
+                List<String> values = entry.getValue();
+                return values == null || values.isEmpty() ? null : values.get(0);
+            }
+        }
+        return null;
+    }
+
+    private static final class PendingWebhookRequest {
+        private final URI url;
+        private final String body;
+        private final CompletableFuture<Boolean> future;
+
+        private PendingWebhookRequest(URI url, String body, CompletableFuture<Boolean> future) {
+            this.url = url;
+            this.body = body;
+            this.future = future;
+        }
+    }
+
+    private static final class HttpResult {
+        private final int statusCode;
+        private final String body;
+        private final Map<String, List<String>> headers;
+
+        private HttpResult(int statusCode, String body, Map<String, List<String>> headers) {
+            this.statusCode = statusCode;
+            this.body = body;
+            this.headers = headers;
         }
     }
 }

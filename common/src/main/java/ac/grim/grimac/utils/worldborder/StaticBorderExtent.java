@@ -2,7 +2,18 @@ package ac.grim.grimac.utils.worldborder;
 
 import ac.grim.grimac.utils.math.GrimMath;
 
-public record StaticBorderExtent(double size) implements BorderExtent {
+import java.util.Objects;
+
+public final class StaticBorderExtent implements BorderExtent {
+    private final double size;
+
+    public StaticBorderExtent(double size) {
+        this.size = size;
+    }
+
+    public double size() {
+        return size;
+    }
 
     @Override
     public double getMinX(double centerX, double absoluteMaxSize) {
@@ -34,4 +45,21 @@ public record StaticBorderExtent(double size) implements BorderExtent {
         return this;
     }
 
+    @Override
+    public String toString() {
+        return "StaticBorderExtent[size=" + size + "]";
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof StaticBorderExtent)) return false;
+        StaticBorderExtent that = (StaticBorderExtent) o;
+        return Double.compare(that.size, size) == 0;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(size);
+    }
 }

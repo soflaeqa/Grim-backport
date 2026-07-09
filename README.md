@@ -35,7 +35,7 @@ A premium version is planned, which will offer additional subscription-based pai
 
 ## Requirements & Installation
 
-- Java 17 or higher. *For more details, see [Updating-to-Java-17](https://github.com/GrimAnticheat/Grim/wiki/Updating-to-Java-17).*
+- Java 8 or higher.
 - A Spigot, Paper, Folia, or Fabric server environment. *For more details, see [Supported-environments](https://github.com/GrimAnticheat/Grim/wiki/Supported-environments).*
 
 If you use a proxy such as Velocity or Bungeecord:

@@ -1,6 +1,7 @@
 package ac.grim.grimac.utils.change;
 
 import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.stream.Collectors;
 import java.util.function.Predicate;
 
 /**
@@ -25,7 +26,7 @@ public class PlayerBlockHistory {
      * @return Filtered list of block modifications
      */
     public Iterable<BlockModification> getRecentModifications(Predicate<BlockModification> filter) {
-        return blockHistory.stream().filter(filter).toList();
+        return blockHistory.stream().filter(filter).collect(Collectors.toList());
     }
 
     /**

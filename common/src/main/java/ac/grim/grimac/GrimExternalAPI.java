@@ -95,7 +95,7 @@ public class GrimExternalAPI implements GrimAbstractAPI, ConfigReloadObserver, S
         try {
             Properties properties = PropertiesUtil.readProperties(GrimExternalAPI.class, "grimac.properties");
             String buildVersion = properties.getProperty("build.version");
-            if (buildVersion != null && !buildVersion.isBlank() && !buildVersion.startsWith("${")) {
+            if (buildVersion != null && !buildVersion.trim().isEmpty() && !buildVersion.startsWith("${")) {
                 return buildVersion;
             }
         } catch (RuntimeException ignored) {

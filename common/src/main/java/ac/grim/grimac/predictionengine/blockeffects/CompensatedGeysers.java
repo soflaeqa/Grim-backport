@@ -167,7 +167,35 @@ public class CompensatedGeysers {
         return ((chunkX & 0x3FFFFFFL) << 38) | ((chunkZ & 0x3FFFFFFL) << 12) | (sectionIndex & 0xFFFL);
     }
 
-    public record GeyserBlockEntity(int x, int y, int z, long tickOrder) {
+    public static final class GeyserBlockEntity {
+        private final int x;
+        private final int y;
+        private final int z;
+        private final long tickOrder;
+
+        public GeyserBlockEntity(int x, int y, int z, long tickOrder) {
+            this.x = x;
+            this.y = y;
+            this.z = z;
+            this.tickOrder = tickOrder;
+        }
+
+        public int x() {
+            return x;
+        }
+
+        public int y() {
+            return y;
+        }
+
+        public int z() {
+            return z;
+        }
+
+        public long tickOrder() {
+            return tickOrder;
+        }
+
         private boolean isInside(int minX, int minY, int minZ, int maxX, int maxY, int maxZ) {
             return x >= minX && x <= maxX
                     && y >= minY && y <= maxY

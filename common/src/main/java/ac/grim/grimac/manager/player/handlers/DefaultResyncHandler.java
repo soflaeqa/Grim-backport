@@ -13,7 +13,17 @@ import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerAc
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerBlockChange;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerMultiBlockChange;
 
-public record DefaultResyncHandler(GrimPlayer player) implements ResyncHandler {
+public final class DefaultResyncHandler implements ResyncHandler {
+    private final GrimPlayer player;
+
+    public DefaultResyncHandler(GrimPlayer player) {
+        this.player = player;
+    }
+
+    public GrimPlayer player() {
+        return player;
+    }
+
 
     private static void resyncPositions(GrimPlayer player, int minBlockX, int mY, int minBlockZ, int maxBlockX, int mxY, int maxBlockZ) {
         // Check the 4 corners of the player world for loaded chunks before calling event

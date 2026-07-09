@@ -8,18 +8,24 @@ import com.github.retrooper.packetevents.protocol.item.type.ItemTypes;
 import com.github.retrooper.packetevents.protocol.player.ClientVersion;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 
 public class ItemBehaviourRegistry {
 
-    private static final Map<ItemType, ItemBehaviour> ITEM_MAPPING = Map.of(
-            ItemTypes.GOAT_HORN, AlwaysUseItem.INSTANCE,
-            ItemTypes.SHIELD, AlwaysUseItem.INSTANCE,
-            ItemTypes.SPYGLASS, AlwaysUseItem.INSTANCE,
-            ItemTypes.CROSSBOW, UnsupportedItem.INSTANCE,
-            ItemTypes.BOW, UnsupportedItem.INSTANCE,
-            ItemTypes.TRIDENT, TridentItem.INSTANCE
-    );
+    private static final Map<ItemType, ItemBehaviour> ITEM_MAPPING = createItemMapping();
+
+    private static Map<ItemType, ItemBehaviour> createItemMapping() {
+        Map<ItemType, ItemBehaviour> map = new HashMap<>();
+        map.put(ItemTypes.GOAT_HORN, AlwaysUseItem.INSTANCE);
+        map.put(ItemTypes.SHIELD, AlwaysUseItem.INSTANCE);
+        map.put(ItemTypes.SPYGLASS, AlwaysUseItem.INSTANCE);
+        map.put(ItemTypes.CROSSBOW, UnsupportedItem.INSTANCE);
+        map.put(ItemTypes.BOW, UnsupportedItem.INSTANCE);
+        map.put(ItemTypes.TRIDENT, TridentItem.INSTANCE);
+        return Collections.unmodifiableMap(map);
+    }
 
     private static final boolean RELIABLE_COMPONENT_SYSTEM = PacketEvents.getAPI().getServerManager().getVersion().isNewerThanOrEquals(ServerVersion.V_1_21_4);
 

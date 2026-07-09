@@ -56,7 +56,7 @@ dependencies {
     // so api() here would nest packetevents-api a second time (~4.2MB) in the jars.
     compileOnly(libs.packetevents.api)
     api(libs.cloud.core)
-    api(libs.cloud.processors.requirements)
+    compileOnly(libs.cloud.processors.requirements)
     api(libs.configuralize) {
         artifact {
             classifier = "slim"
@@ -69,8 +69,8 @@ dependencies {
     api(libs.adventure.text.minimessage)
     api(libs.jetbrains.annotations)
     api(libs.hikaricp)
-    api(libs.grim.api)
-    api(libs.grim.internal)
+    compileOnly(libs.grim.api)
+    compileOnly(libs.grim.internal)
     compileOnly(libs.grim.internal.shims)
     compileOnly(libs.mongoDriverSync)
 

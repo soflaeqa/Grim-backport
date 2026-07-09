@@ -278,7 +278,8 @@ public class BlockPlace {
         } else if (BlockTags.DOORS.contains(blockMaterial)) { // You can place blocks that need solid faces on doors
             CollisionData data = CollisionData.getData(blockMaterial);
 
-            if (data.dynamic instanceof DoorHandler doorHandler) {
+            if (data.dynamic instanceof DoorHandler) {
+                DoorHandler doorHandler = (DoorHandler) data.dynamic;
                 return doorHandler.fetchDirection(
                         player, player.getClientVersion(), state,
                         position.x, position.y, position.z
@@ -524,14 +525,20 @@ public class BlockPlace {
     }
 
     public Vector3i getNormalBlockFace() {
-        return switch (face) {
-            case DOWN -> new Vector3i(0, -1, 0);
-            case SOUTH -> new Vector3i(0, 0, 1);
-            case NORTH -> new Vector3i(0, 0, -1);
-            case WEST -> new Vector3i(-1, 0, 0);
-            case EAST -> new Vector3i(1, 0, 0);
-            default -> new Vector3i(0, 1, 0);
-        };
+        switch (face) {
+            case DOWN:
+                return new Vector3i(0, -1, 0);
+            case SOUTH:
+                return new Vector3i(0, 0, 1);
+            case NORTH:
+                return new Vector3i(0, 0, -1);
+            case WEST:
+                return new Vector3i(-1, 0, 0);
+            case EAST:
+                return new Vector3i(1, 0, 0);
+            default:
+                return new Vector3i(0, 1, 0);
+        }
     }
 
     public void set(StateType material) {

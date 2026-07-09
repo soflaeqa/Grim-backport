@@ -40,7 +40,7 @@ public class MultiPlace extends BlockPlaceCheck {
             final int faceId = VerboseCodecs.enumId(face);
             final int lastFaceId = VerboseCodecs.enumId(lastFace);
             if (!player.canSkipTicks()) {
-                var buf = V.write(verbose()).uint(faceId).uint(lastFaceId)
+                Verbose.Writer buf = V.write(verbose()).uint(faceId).uint(lastFaceId)
                         .cursor(cursor.x, cursor.y, cursor.z)
                         .cursor(lastCursor.x, lastCursor.y, lastCursor.z)
                         .mcPos(pos.x, pos.y, pos.z)
@@ -84,12 +84,46 @@ public class MultiPlace extends BlockPlaceCheck {
         flags.clear();
     }
 
-    private record FlagData(
-            int face,
-            int lastFace,
-            Vector3f cursor,
-            Vector3f lastCursor,
-            Vector3i pos,
-            Vector3i lastPos) {
+    private static final class FlagData {
+        private final int face;
+        private final int lastFace;
+        private final Vector3f cursor;
+        private final Vector3f lastCursor;
+        private final Vector3i pos;
+        private final Vector3i lastPos;
+
+        private FlagData(int face, int lastFace, Vector3f cursor,
+                         Vector3f lastCursor, Vector3i pos, Vector3i lastPos) {
+            this.face = face;
+            this.lastFace = lastFace;
+            this.cursor = cursor;
+            this.lastCursor = lastCursor;
+            this.pos = pos;
+            this.lastPos = lastPos;
+        }
+
+        public int face() {
+            return face;
+        }
+
+        public int lastFace() {
+            return lastFace;
+        }
+
+        public Vector3f cursor() {
+            return cursor;
+        }
+
+        public Vector3f lastCursor() {
+            return lastCursor;
+        }
+
+        public Vector3i pos() {
+            return pos;
+        }
+
+        public Vector3i lastPos() {
+            return lastPos;
+        }
     }
 }

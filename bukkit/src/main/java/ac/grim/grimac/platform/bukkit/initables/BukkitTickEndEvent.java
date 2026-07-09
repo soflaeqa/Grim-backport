@@ -16,23 +16,20 @@ import io.github.retrooper.packetevents.util.SpigotReflectionUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Listener;
-import sun.misc.Unsafe;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.List;
 
 // Copied from: https://github.com/ThomasOM/Pledge/blob/master/src/main/java/dev/thomazz/pledge/inject/ServerInjector.java
-@SuppressWarnings(value = {"unchecked", "deprecated"})
+@SuppressWarnings(value = {"unchecked", "deprecated", "rawtypes"})
 public class BukkitTickEndEvent extends AbstractTickEndEvent implements Listener {
-
     private Boolean getLateBindState() {
-        Class<?> spigotConfig = ReflectionUtils.getClass("org.spigotmc.SpigotConfig");
+        Class spigotConfig = ReflectionUtils.getClass("org.spigotmc.SpigotConfig");
         // ReflectionUtils.getField(class, name) handles the loop and setAccessible
         Field field = ReflectionUtils.getField(spigotConfig, "lateBind");
-
         if (field == null) return null;
-
         try {
             return (boolean) field.get(null);
         } catch (Exception ignored) {
@@ -45,26 +42,28 @@ public class BukkitTickEndEvent extends AbstractTickEndEvent implements Listener
         if (!super.shouldInjectEndTick()) {
             return;
         }
+
         boolean flush = false;
         if (!PaperUtils.HAS_TICK_END_EVENT && !Boolean.getBoolean("paper.explicit-flush")) {
             LogUtil.warn("Reach.enable-post-packet=true but paper.explicit-flush=false, add \"-Dpaper.explicit-flush=true\" to your server's startup flags for fully functional extra reach accuracy.");
             flush = true;
         }
+
         // this is necessary for folia
         if (GrimAPI.INSTANCE.getPlatform() == Platform.FOLIA) {
             PaperUtils.registerTickEndEvent(this, this::tickAllFoliaPlayers);
             return;
         }
+
         // if it fails to register Paper event, try to inject via reflection
         if (!PaperUtils.registerTickEndEvent(this, () -> this.tickAllPlayers(true)) && !injectWithReflection(flush)) {
             LogUtil.error("Failed to inject into the end of tick event!");
-
             if (PacketEvents.getAPI().getServerManager().getVersion().isOlderThan(ServerVersion.V_1_14_4)) {
                 Boolean lateBind = getLateBindState();
                 if (lateBind == null) {
-                    LogUtil.error("Failed to determine the late-bind state. Perhaps you are using a custom server fork? Check the fork configuration for a late-bind option and disable it.");
+                    LogUtil.error("Failed to determine the late-bind state.\nPerhaps you are using a custom server fork? Check the fork configuration for a late-bind option and disable it.");
                 } else if (lateBind) {
-                    LogUtil.error("Injection failed because the late-bind option is enabled. Disable it in spigot.yml.");
+                    LogUtil.error("Injection failed because the late-bind option is enabled.\nDisable it in spigot.yml.");
                 }
             }
         }
@@ -94,25 +93,32 @@ public class BukkitTickEndEvent extends AbstractTickEndEvent implements Listener
             if (connection == null) return false;
 
             Field connectionsList = Reflection.getField(connection.getClass(), List.class, 1);
-            List<Object> endOfTickObject = (List<Object>) connectionsList.get(connection);
+            List endOfTickObject = (List) connectionsList.get(connection);
 
             // Use a list wrapper to check when the size method is called
             // Unsure why synchronized is needed because the object itself gets synchronized
-            // but whatever.  At least plugins can't break it, I guess.
-            //
+            // but whatever. At least plugins can't break it, I guess.
             // Pledge injects into another list, so we should be safe injecting into this one
-            List<?> wrapper = Collections.synchronizedList(new HookedListWrapper<>(endOfTickObject) {
+            List wrapper = Collections.synchronizedList(new HookedListWrapper(endOfTickObject) {
                 @Override
                 public void onIterator() {
                     tickAllPlayers(flush);
                 }
             });
 
-            Field unsafeField = Unsafe.class.getDeclaredField("theUnsafe");
+            // Do not import sun.misc.Unsafe directly: modern javac with --release/source 8 may not expose it.
+            // Load it reflectively instead, so the source stays Java 8-compatible while preserving the same runtime behavior.
+            Class unsafeClass = Class.forName("sun.misc.Unsafe");
+            Field unsafeField = unsafeClass.getDeclaredField("theUnsafe");
             unsafeField.setAccessible(true);
-            Unsafe unsafe = (Unsafe) unsafeField.get(null);
-            unsafe.putObject(connection, unsafe.objectFieldOffset(connectionsList), wrapper);
-        } catch (NoSuchFieldException | IllegalAccessException e) {
+            Object unsafe = unsafeField.get(null);
+
+            Method objectFieldOffset = unsafeClass.getMethod("objectFieldOffset", Field.class);
+            Method putObject = unsafeClass.getMethod("putObject", Object.class, long.class, Object.class);
+
+            long offset = ((Long) objectFieldOffset.invoke(unsafe, connectionsList)).longValue();
+            putObject.invoke(unsafe, connection, offset, wrapper);
+        } catch (Exception e) {
             LogUtil.error("Failed to inject into the end of tick event via reflection", e);
             return false;
         }

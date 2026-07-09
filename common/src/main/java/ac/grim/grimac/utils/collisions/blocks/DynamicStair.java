@@ -78,12 +78,16 @@ public class DynamicStair implements CollisionFactory {
     }
 
     private static BlockFace rotateYCCW(BlockFace face) {
-        return switch (face) {
-            case EAST -> BlockFace.NORTH;
-            case SOUTH -> BlockFace.EAST;
-            case WEST -> BlockFace.SOUTH;
-            default -> BlockFace.WEST;
-        };
+        switch (face) {
+    case EAST:
+        return BlockFace.NORTH;
+    case SOUTH:
+        return BlockFace.EAST;
+    case WEST:
+        return BlockFace.SOUTH;
+    default:
+        return BlockFace.WEST;
+}
     }
 
     private static CollisionBox[] makeShapes(SimpleCollisionBox p_199779_0_, SimpleCollisionBox p_199779_1_, SimpleCollisionBox p_199779_2_, SimpleCollisionBox p_199779_3_, SimpleCollisionBox p_199779_4_) {
@@ -130,23 +134,33 @@ public class DynamicStair implements CollisionFactory {
     }
 
     private int directionToValue(BlockFace face) {
-        return switch (face) {
-            case NORTH -> 2;
-            case SOUTH -> 0;
-            case WEST -> 1;
-            case EAST -> 3;
-            default -> -1;
-        };
+        switch (face) {
+    case NORTH:
+        return 2;
+    case SOUTH:
+        return 0;
+    case WEST:
+        return 1;
+    case EAST:
+        return 3;
+    default:
+        return -1;
+}
     }
 
     private EnumShape toEnumShape(Shape shape) {
-        return switch (shape) {
-            case INNER_LEFT -> EnumShape.INNER_LEFT;
-            case INNER_RIGHT -> EnumShape.INNER_RIGHT;
-            case OUTER_LEFT -> EnumShape.OUTER_LEFT;
-            case OUTER_RIGHT -> EnumShape.OUTER_RIGHT;
-            default -> EnumShape.STRAIGHT;
-        };
+        switch (shape) {
+    case INNER_LEFT:
+        return EnumShape.INNER_LEFT;
+    case INNER_RIGHT:
+        return EnumShape.INNER_RIGHT;
+    case OUTER_LEFT:
+        return EnumShape.OUTER_LEFT;
+    case OUTER_RIGHT:
+        return EnumShape.OUTER_RIGHT;
+    default:
+        return EnumShape.STRAIGHT;
+}
     }
 
     enum EnumShape {

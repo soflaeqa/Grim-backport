@@ -22,7 +22,8 @@ public class PacketOrderH extends Check implements PostPredictionCheck {
     public void onPacketReceive(PacketReceiveEvent event) {
         if (event.getPacketType() == PacketType.Play.Client.ENTITY_ACTION) {
             switch (new WrapperPlayClientEntityAction(event).getAction()) {
-                case START_SPRINTING, STOP_SPRINTING -> {
+                case START_SPRINTING:
+                case STOP_SPRINTING:
                     if (player.getClientVersion().isOlderThan(ClientVersion.V_1_21_2) && player.packetOrderProcessor.isSneaking()) {
                         if (!player.canSkipTicks()) {
                             flag();
@@ -30,8 +31,10 @@ public class PacketOrderH extends Check implements PostPredictionCheck {
                             invalid++;
                         }
                     }
-                }
-                case START_SNEAKING, STOP_SNEAKING -> {
+                    break;
+
+                case START_SNEAKING:
+                case STOP_SNEAKING:
                     if (player.getClientVersion().isNewerThanOrEquals(ClientVersion.V_1_21_2) && player.packetOrderProcessor.isSprinting()) {
                         if (!player.canSkipTicks()) {
                             flag();
@@ -39,7 +42,10 @@ public class PacketOrderH extends Check implements PostPredictionCheck {
                             invalid++;
                         }
                     }
-                }
+                    break;
+
+                default:
+                    break;
             }
         }
     }

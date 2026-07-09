@@ -20,6 +20,7 @@ import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientEn
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -42,17 +43,17 @@ public final class VerboseCodecs {
         VerboseTags.registerEnumLower("clicktype_lower", WindowClickType.values());
         VerboseTags.registerEnum("entityaction", Action.values());
         VerboseTags.registerEnum("hand", InteractionHand.values());
-        VerboseTags.register("block", List.of(VerboseSchema.TypeTag.ZZ),
+        VerboseTags.register("block", Collections.singletonList(VerboseSchema.TypeTag.ZZ),
                 (in, ctx, out, fmt) -> out.append(blockName(ctx.clientVersionPvn(), in.rzz())));
-        VerboseTags.register("item", List.of(VerboseSchema.TypeTag.ZZ),
+        VerboseTags.register("item", Collections.singletonList(VerboseSchema.TypeTag.ZZ),
                 (in, ctx, out, fmt) -> out.append(itemTypeName(ctx.clientVersionPvn(), in.rzz())));
-        VerboseTags.register("packet", List.of(VerboseSchema.TypeTag.ZZ),
+        VerboseTags.register("packet", Collections.singletonList(VerboseSchema.TypeTag.ZZ),
                 (in, ctx, out, fmt) -> out.append(packetName(ctx.clientVersionPvn(), in.rzz())));
-        VerboseTags.register("entity", List.of(VerboseSchema.TypeTag.VI),
+        VerboseTags.register("entity", Collections.singletonList(VerboseSchema.TypeTag.VI),
                 (in, ctx, out, fmt) -> out.append(entityTypeName(ctx.clientVersionPvn(), in.rvi())));
-        VerboseTags.register("offset", List.of(VerboseSchema.TypeTag.F64),
+        VerboseTags.register("offset", Collections.singletonList(VerboseSchema.TypeTag.F64),
                 (in, ctx, out, fmt) -> out.append(OffsetHandler.humanFormattedOffset(in.rf64())));
-        VerboseTags.register("stdnum", List.of(VerboseSchema.TypeTag.F64),
+        VerboseTags.register("stdnum", Collections.singletonList(VerboseSchema.TypeTag.F64),
                 (in, ctx, out, fmt) -> out.append(formatNumberStandard(in.rf64())));
     }
 

@@ -21,8 +21,10 @@ import java.util.Set;
 public final class PredictionEngineRideableUtils {
 
     public static Set<VectorData> handleJumps(GrimPlayer player, Set<VectorData> possibleVectors) {
-        if (!(player.compensatedEntities.self.getRiding() instanceof JumpableEntity jumpable))
+        if (!(player.compensatedEntities.self.getRiding() instanceof JumpableEntity))
             return possibleVectors;
+
+        JumpableEntity jumpable = (JumpableEntity) player.compensatedEntities.self.getRiding();
 
         // TODO: onGround can desync if it's first riding tick
         jumpable.executeJump(player, possibleVectors);

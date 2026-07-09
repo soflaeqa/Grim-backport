@@ -160,17 +160,21 @@ public class PunishmentManager implements ConfigReloadable {
                             if (canceled) continue;
 
                             switch (command.command) {
-                                case "[webhook]" -> GrimAPI.INSTANCE.getDiscordManager().sendAlert(player, renderedVerbose, check.getDisplayName(), vl);
-                                case "[log]" -> {
+                                case "[webhook]":
+                                    GrimAPI.INSTANCE.getDiscordManager().sendAlert(player, renderedVerbose, check.getDisplayName(), vl);
+                                    break;
+                                case "[log]":
                                     // Binary flags already stored a row; avoid an extra legacy text row.
                                     if (!check.isLastFlagStoredBinaryVerbose()) {
                                         String verboseWithoutGl = renderedVerbose.replaceAll(" /gl .*", "");
                                         GrimAPI.INSTANCE.getDataStoreLifecycle().liveWriteHooks()
                                                 .recordFlagFromCheck(player, check, vl, verboseWithoutGl);
                                     }
-                                }
-                                case "[proxy]" -> ProxyAlertMessenger.sendPluginMessage(cmd);
-                                case "[alert]" -> {
+                                    break;
+                                case "[proxy]":
+                                    ProxyAlertMessenger.sendPluginMessage(cmd);
+                                    break;
+                                case "[alert]":
                                     sentDebug = true;
                                     Component message = MessageUtil.miniMessage(cmd);
                                     if (testMode) { // secret test mode
@@ -180,13 +184,15 @@ public class PunishmentManager implements ConfigReloadable {
                                     } else {
                                         GrimAPI.INSTANCE.getAlertManager().sendAlert(message, verboseListeners);
                                     }
-                                }
-                                default -> GrimAPI.INSTANCE.getScheduler().getGlobalRegionScheduler().run(GrimAPI.INSTANCE.getGrimPlugin(), () ->
-                                        GrimAPI.INSTANCE.getPlatformServer().dispatchCommand(
-                                                GrimAPI.INSTANCE.getPlatformServer().getConsoleSender(),
-                                                cmd
-                                        )
-                                );
+                                    break;
+                                default:
+                                    GrimAPI.INSTANCE.getScheduler().getGlobalRegionScheduler().run(GrimAPI.INSTANCE.getGrimPlugin(), () ->
+                                            GrimAPI.INSTANCE.getPlatformServer().dispatchCommand(
+                                                    GrimAPI.INSTANCE.getPlatformServer().getConsoleSender(),
+                                                    cmd
+                                            )
+                                    );
+                                    break;
                             }
                         }
 

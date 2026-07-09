@@ -60,7 +60,7 @@ public class WrongBreak extends Check implements BlockBreakCheck {
             if (!shouldExempt(blockBreak.block, pos.y) && !pos.equals(lastBlock)) {
                 // https://github.com/GrimAnticheat/Grim/issues/1512
                 if (player.getClientVersion().isOlderThan(ClientVersion.V_1_14_4) || (!lastBlockWasInstantBreak && pos.equals(lastCancelledBlock))) {
-                    var buf = V.write(verbose()).uint(VerboseCodecs.enumId(DiggingAction.CANCELLED_DIGGING))
+                    Verbose.Writer buf = V.write(verbose()).uint(VerboseCodecs.enumId(DiggingAction.CANCELLED_DIGGING))
                             .bool(lastBlock != null)
                             .mcPos(lastBlock == null ? 0 : lastBlock.x, lastBlock == null ? 0 : lastBlock.y, lastBlock == null ? 0 : lastBlock.z)
                             .mcPos(pos.x, pos.y, pos.z);
@@ -83,7 +83,7 @@ public class WrongBreak extends Check implements BlockBreakCheck {
 
             // when a player looks away from the mined block, they send a cancel, and if they look at it again, they don't send another start. (thanks mojang!)
             if (!pos.equals(lastCancelledBlock) && (!lastBlockWasInstantBreak || player.getClientVersion().isOlderThan(ClientVersion.V_1_14_4)) && !pos.equals(lastBlock)) {
-                var buf = V.write(verbose()).uint(VerboseCodecs.enumId(DiggingAction.FINISHED_DIGGING))
+                Verbose.Writer buf = V.write(verbose()).uint(VerboseCodecs.enumId(DiggingAction.FINISHED_DIGGING))
                         .bool(lastBlock != null)
                         .mcPos(lastBlock == null ? 0 : lastBlock.x, lastBlock == null ? 0 : lastBlock.y, lastBlock == null ? 0 : lastBlock.z)
                         .mcPos(pos.x, pos.y, pos.z);

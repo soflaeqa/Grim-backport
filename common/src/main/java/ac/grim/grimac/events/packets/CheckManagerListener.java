@@ -182,8 +182,9 @@ public class CheckManagerListener extends PacketListenerAbstract {
 
     private static void handleBlockPlaceOrUseItem(PacketWrapper<?> packet, GrimPlayer player) {
         // Legacy "use item" packet
-        if (packet instanceof WrapperPlayClientPlayerBlockPlacement place &&
-                PacketEvents.getAPI().getServerManager().getVersion().isOlderThan(ServerVersion.V_1_9)) {
+        if (packet instanceof WrapperPlayClientPlayerBlockPlacement
+                && PacketEvents.getAPI().getServerManager().getVersion().isOlderThan(ServerVersion.V_1_9)) {
+            WrapperPlayClientPlayerBlockPlacement place = (WrapperPlayClientPlayerBlockPlacement) packet;
 
             if (player.gamemode == GameMode.SPECTATOR || player.gamemode == GameMode.ADVENTURE)
                 return;
@@ -199,7 +200,9 @@ public class CheckManagerListener extends PacketListenerAbstract {
             }
         }
 
-        if (packet instanceof WrapperPlayClientUseItem place) {
+        if (packet instanceof WrapperPlayClientUseItem) {
+            WrapperPlayClientUseItem place = (WrapperPlayClientUseItem) packet;
+
             if (player.gamemode == GameMode.SPECTATOR || player.gamemode == GameMode.ADVENTURE)
                 return;
 
@@ -212,7 +215,9 @@ public class CheckManagerListener extends PacketListenerAbstract {
         }
 
         // Check for interactable first (door, etc)
-        if (packet instanceof WrapperPlayClientPlayerBlockPlacement place) {
+        if (packet instanceof WrapperPlayClientPlayerBlockPlacement) {
+            WrapperPlayClientPlayerBlockPlacement place = (WrapperPlayClientPlayerBlockPlacement) packet;
+
             ItemStack placedWith = player.inventory.getHeldItem();
             ItemStack offhand = player.inventory.getOffHand();
 
@@ -245,7 +250,9 @@ public class CheckManagerListener extends PacketListenerAbstract {
             }
         }
 
-        if (packet instanceof WrapperPlayClientPlayerBlockPlacement place) {
+        if (packet instanceof WrapperPlayClientPlayerBlockPlacement) {
+            WrapperPlayClientPlayerBlockPlacement place = (WrapperPlayClientPlayerBlockPlacement) packet;
+
             if (player.gamemode == GameMode.SPECTATOR || player.gamemode == GameMode.ADVENTURE)
                 return;
 

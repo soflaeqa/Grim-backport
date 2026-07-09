@@ -26,24 +26,8 @@ import java.util.logging.Logger;
 
 /**
  * Concrete {@link PlayerToggleStore} backed by a {@link DataStore}.
- *
- * <h2>Lock-free state machine</h2>
- * Each (player, key) holds an {@link AtomicReference} to a {@link TogglePair}
- * carrying the value and the {@link Source} that wrote it. State transitions are
- * a precedence-gated CAS loop:
- * <pre>
- *   USER_TOGGLED      30  — staff explicitly issued /grim toggle. Stomps anything.
- *   PERSISTED         20  — prefetch returned a row. Wins over PERMISSION_DEFAULT.
- *   PERMISSION_DEFAULT 10 — onUserLogin's grim.*.enable-on-join fallback.
- *   UNKNOWN            0  — initial state.
- * </pre>
- *
- * <h2>Coalesced persists</h2>
- * User toggles update the in-memory value immediately and flag the slot dirty,
- * but the DB write is deferred via a single-flight scheduled flush.
  */
 public final class PlayerToggleStoreImpl implements PlayerToggleStore {
-
     public enum Source {
         UNKNOWN(0),
         PERMISSION_DEFAULT(10),
@@ -51,23 +35,44 @@ public final class PlayerToggleStoreImpl implements PlayerToggleStore {
         USER_TOGGLED(30);
 
         public final int precedence;
-        Source(int precedence) { this.precedence = precedence; }
+
+        Source(int precedence) {
+            this.precedence = precedence;
+        }
     }
 
-    public record TogglePair(@NotNull Source source, @Nullable Boolean value) {
+    public static final class TogglePair {
         static final TogglePair INITIAL = new TogglePair(Source.UNKNOWN, null);
+
+        private final @NotNull Source source;
+        private final @Nullable Boolean value;
+
+        public TogglePair(@NotNull Source source, @Nullable Boolean value) {
+            this.source = source;
+            this.value = value;
+        }
+
+        public @NotNull Source source() {
+            return source;
+        }
+
+        public @Nullable Boolean value() {
+            return value;
+        }
     }
 
     /** Per-player slot. All fields are lock-free. */
     public static final class ToggleSlot {
-        final AtomicReference<TogglePair> alerts = new AtomicReference<>(TogglePair.INITIAL);
-        final AtomicReference<TogglePair> verbose = new AtomicReference<>(TogglePair.INITIAL);
-        final AtomicReference<TogglePair> brands = new AtomicReference<>(TogglePair.INITIAL);
+        final AtomicReference<TogglePair> alerts = new AtomicReference<TogglePair>(TogglePair.INITIAL);
+        final AtomicReference<TogglePair> verbose = new AtomicReference<TogglePair>(TogglePair.INITIAL);
+        final AtomicReference<TogglePair> brands = new AtomicReference<TogglePair>(TogglePair.INITIAL);
+
         final AtomicBoolean alertsDirty = new AtomicBoolean();
         final AtomicBoolean verboseDirty = new AtomicBoolean();
         final AtomicBoolean brandsDirty = new AtomicBoolean();
+
         /** Single-flight reference: at most one flush per slot in scheduler at a time. */
-        final AtomicReference<ScheduledFuture<?>> pendingFlush = new AtomicReference<>();
+        final AtomicReference<ScheduledFuture<?>> pendingFlush = new AtomicReference<ScheduledFuture<?>>();
     }
 
     private static final long DEFAULT_FLUSH_DELAY_MS = 500L;
@@ -77,7 +82,7 @@ public final class PlayerToggleStoreImpl implements PlayerToggleStore {
     private final ScheduledExecutorService scheduler;
     private final long flushDelayMs;
     private final boolean ownsScheduler;
-    private final Map<UUID, ToggleSlot> slots = new ConcurrentHashMap<>();
+    private final Map<UUID, ToggleSlot> slots = new ConcurrentHashMap<UUID, ToggleSlot>();
 
     public PlayerToggleStoreImpl(@NotNull DataStore store, @NotNull Logger logger) {
         this(store, logger, defaultScheduler(), DEFAULT_FLUSH_DELAY_MS, true);
@@ -96,24 +101,31 @@ public final class PlayerToggleStoreImpl implements PlayerToggleStore {
     }
 
     private static ScheduledExecutorService defaultScheduler() {
-        return Executors.newSingleThreadScheduledExecutor(r -> {
-            Thread t = new Thread(r, "grim-toggle-flush");
-            t.setDaemon(true);
-            return t;
+        return Executors.newSingleThreadScheduledExecutor(new java.util.concurrent.ThreadFactory() {
+            @Override
+            public Thread newThread(Runnable r) {
+                Thread t = new Thread(r, "grim-toggle-flush");
+                t.setDaemon(true);
+                return t;
+            }
         });
     }
 
     @Override
     public void prefetch(@NotNull UUID uuid) {
-        ToggleSlot slot = slots.computeIfAbsent(uuid, k -> new ToggleSlot());
+        ToggleSlot slot = slots.get(uuid);
+        if (slot == null) {
+            slot = new ToggleSlot();
+            ToggleSlot existing = slots.putIfAbsent(uuid, slot);
+            if (existing != null) slot = existing;
+        }
         prefetchKey(uuid, slot.alerts, KEY_ALERTS);
         prefetchKey(uuid, slot.verbose, KEY_VERBOSE);
         prefetchKey(uuid, slot.brands, KEY_BRANDS);
     }
 
-    private void prefetchKey(UUID uuid, AtomicReference<TogglePair> ref, String key) {
-        store.query(Categories.SETTING,
-                        new Queries.GetSetting(SettingScope.PLAYER, uuid.toString(), key))
+    private void prefetchKey(final UUID uuid, final AtomicReference<TogglePair> ref, final String key) {
+        store.query(Categories.SETTING, new Queries.GetSetting(SettingScope.PLAYER, uuid.toString(), key))
                 .whenComplete((page, err) -> {
                     if (err != null) {
                         logger.log(Level.FINE, "[grim-toggle] prefetch " + key + " failed for " + uuid, err);
@@ -134,7 +146,12 @@ public final class PlayerToggleStoreImpl implements PlayerToggleStore {
 
     @Override
     public void applyPermissionDefault(@NotNull UUID uuid, @NotNull String key, boolean value) {
-        ToggleSlot slot = slots.computeIfAbsent(uuid, k -> new ToggleSlot());
+        ToggleSlot slot = slots.get(uuid);
+        if (slot == null) {
+            slot = new ToggleSlot();
+            ToggleSlot existing = slots.putIfAbsent(uuid, slot);
+            if (existing != null) slot = existing;
+        }
         AtomicReference<TogglePair> ref = refFor(slot, key);
         if (ref == null) return;
         if (trySetWithPrecedence(ref, Source.PERMISSION_DEFAULT, value)) {
@@ -144,7 +161,12 @@ public final class PlayerToggleStoreImpl implements PlayerToggleStore {
 
     @Override
     public void applyUserToggle(@NotNull UUID uuid, @NotNull String key, boolean value) {
-        ToggleSlot slot = slots.computeIfAbsent(uuid, k -> new ToggleSlot());
+        ToggleSlot slot = slots.get(uuid);
+        if (slot == null) {
+            slot = new ToggleSlot();
+            ToggleSlot existing = slots.putIfAbsent(uuid, slot);
+            if (existing != null) slot = existing;
+        }
         AtomicReference<TogglePair> ref = refFor(slot, key);
         AtomicBoolean dirty = dirtyFor(slot, key);
         if (ref == null || dirty == null) return;
@@ -162,11 +184,10 @@ public final class PlayerToggleStoreImpl implements PlayerToggleStore {
         flushDirty(slot, uuid);
     }
 
-    /**
-     * Precedence-gated CAS loop. Returns true on successful set, false if the
-     * current source already meets or exceeds the new source's precedence.
-     */
-    private static boolean trySetWithPrecedence(AtomicReference<TogglePair> ref, Source newSource, Boolean newValue) {
+    /** Precedence-gated CAS loop. */
+    private static boolean trySetWithPrecedence(AtomicReference<TogglePair> ref,
+                                                Source newSource,
+                                                Boolean newValue) {
         TogglePair next = new TogglePair(newSource, newValue);
         while (true) {
             TogglePair cur = ref.get();
@@ -175,16 +196,15 @@ public final class PlayerToggleStoreImpl implements PlayerToggleStore {
         }
     }
 
-    /**
-     * Schedule a coalesced flush. Single-flight: if a flush is already queued,
-     * don't queue another — the queued one will read the latest atomic values
-     * at fire time and pick up everything dirty.
-     */
-    private void scheduleFlush(ToggleSlot slot, UUID uuid) {
+    /** Schedule a coalesced flush. */
+    private void scheduleFlush(final ToggleSlot slot, final UUID uuid) {
         if (slot.pendingFlush.get() != null) return;
-        ScheduledFuture<?> f = scheduler.schedule(() -> {
-            slot.pendingFlush.set(null);
-            flushDirty(slot, uuid);
+        ScheduledFuture<?> f = scheduler.schedule(new Runnable() {
+            @Override
+            public void run() {
+                slot.pendingFlush.set(null);
+                flushDirty(slot, uuid);
+            }
         }, flushDelayMs, TimeUnit.MILLISECONDS);
         if (!slot.pendingFlush.compareAndSet(null, f)) f.cancel(false);
     }
@@ -202,21 +222,17 @@ public final class PlayerToggleStoreImpl implements PlayerToggleStore {
     }
 
     private static AtomicReference<TogglePair> refFor(ToggleSlot s, String key) {
-        switch (key) {
-            case KEY_ALERTS: return s.alerts;
-            case KEY_VERBOSE: return s.verbose;
-            case KEY_BRANDS: return s.brands;
-            default: return null;
-        }
+        if (KEY_ALERTS.equals(key)) return s.alerts;
+        if (KEY_VERBOSE.equals(key)) return s.verbose;
+        if (KEY_BRANDS.equals(key)) return s.brands;
+        return null;
     }
 
     private static AtomicBoolean dirtyFor(ToggleSlot s, String key) {
-        switch (key) {
-            case KEY_ALERTS: return s.alertsDirty;
-            case KEY_VERBOSE: return s.verboseDirty;
-            case KEY_BRANDS: return s.brandsDirty;
-            default: return null;
-        }
+        if (KEY_ALERTS.equals(key)) return s.alertsDirty;
+        if (KEY_VERBOSE.equals(key)) return s.verboseDirty;
+        if (KEY_BRANDS.equals(key)) return s.brandsDirty;
+        return null;
     }
 
     private void persist(UUID uuid, String key, boolean value) {
@@ -230,7 +246,7 @@ public final class PlayerToggleStoreImpl implements PlayerToggleStore {
     }
 
     private static byte[] encodeBool(boolean v) {
-        return new byte[] { v ? (byte) 1 : (byte) 0 };
+        return new byte[]{v ? (byte) 1 : (byte) 0};
     }
 
     private static @Nullable Boolean decodeBool(@NotNull Page<SettingRecord> page) {

@@ -104,10 +104,21 @@ public class ConsumesBlockPlace {
     }
 
     private static boolean isProperHit(@NotNull WrappedBlockState bell, @NotNull BlockFace direction, double p_49742_) {
-        return direction != BlockFace.UP && direction != BlockFace.DOWN && !(p_49742_ > (double) 0.8124F) && switch (bell.getAttachment()) {
-            case FLOOR -> AxisUtil.isSameAxis(bell.getFacing(), direction);
-            case SINGLE_WALL, DOUBLE_WALL -> !AxisUtil.isSameAxis(bell.getFacing(), direction);
-            case CEILING -> true;
-        };
+        if (direction == BlockFace.UP || direction == BlockFace.DOWN || p_49742_ > (double) 0.8124F) {
+            return false;
+        }
+
+        switch (bell.getAttachment()) {
+            case FLOOR:
+                return AxisUtil.isSameAxis(bell.getFacing(), direction);
+
+            case SINGLE_WALL:
+            case DOUBLE_WALL:
+                return !AxisUtil.isSameAxis(bell.getFacing(), direction);
+
+            case CEILING:
+            default:
+                return true;
+        }
     }
 }

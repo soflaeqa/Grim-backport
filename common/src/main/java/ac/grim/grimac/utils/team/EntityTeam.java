@@ -84,7 +84,10 @@ public final class EntityTeam {
 
     @Override
     public boolean equals(Object o) {
-        return this == o || o instanceof EntityTeam t && Objects.equals(name, t.name);
+        if (this == o) return true;
+        if (!(o instanceof EntityTeam)) return false;
+        EntityTeam t = (EntityTeam) o;
+        return Objects.equals(name, t.name);
     }
 
     @Override

@@ -37,7 +37,7 @@ public class ChatB extends Check implements PacketCheck {
 
         if (event.getPacketType() == PacketType.Play.Client.CHAT_COMMAND_UNSIGNED) {
             String command = "/" + new WrapperPlayClientChatCommandUnsigned(event).getCommand();
-            if (!command.stripTrailing().equals(command)) {
+            if (!stripTrailingJava8(command).equals(command)) {
                 if (flag(V.write(verbose()).bool(false).str(command))) {
                     event.setCancelled(true);
                     player.onPacketCancel();
@@ -55,4 +55,13 @@ public class ChatB extends Check implements PacketCheck {
             }
         }
     }
+    private static String stripTrailingJava8(String value) {
+        int end = value.length();
+        while (end > 0 && Character.isWhitespace(value.charAt(end - 1))) {
+            end--;
+        }
+        return end == value.length() ? value : value.substring(0, end);
+    }
+
+
 }

@@ -33,9 +33,11 @@ public class FloatInputTransformer implements InputTransformer<FloatInput> { // 
 
     @Override
     public Vector3dm getMovementResultFromInput(GrimPlayer player, Input inputVector, float speed, float yaw) {
-        if (!(inputVector instanceof FloatInput input)) {
+        if (!(inputVector instanceof FloatInput)) {
             throw new IllegalStateException("Expected input vector of type FloatInput, but got " + inputVector.getClass().getSimpleName());
         }
+
+        FloatInput input = (FloatInput) inputVector;
 
         float forward = input.forward(), sideways = input.sideways(), vertical = input.vertical();
         float lengthSquared = sideways * sideways + vertical * vertical + forward * forward;

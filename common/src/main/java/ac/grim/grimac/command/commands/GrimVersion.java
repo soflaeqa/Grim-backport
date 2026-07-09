@@ -19,72 +19,90 @@ import org.incendo.cloud.context.CommandContext;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.time.Duration;
-import java.time.temporal.ChronoUnit;
-import java.util.Objects;
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class GrimVersion implements BuildableCommand {
 
     private static final AtomicReference<Component> updateMessage = new AtomicReference<>();
-    private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
-            .connectTimeout(Duration.of(CommonGrimArguments.URL_TIMEOUT.value(), ChronoUnit.MILLIS))
-            .build();
     private static long lastCheck;
 
     public static void checkForUpdatesAsync(Sender sender) {
         String current = GrimAPI.INSTANCE.getExternalAPI().getGrimVersion();
+
         sender.sendMessage(Component.text()
                 .append(Component.text("Grim Version: ").color(NamedTextColor.GRAY))
                 .append(Component.text(current).color(NamedTextColor.AQUA))
                 .build());
+
         // use cached message if last check was less than 1 minute ago
         final long now = System.currentTimeMillis();
         if (now - lastCheck < 60000) {
             Component message = updateMessage.get();
-            if (message != null) sender.sendMessage(message);
+            if (message != null) {
+                sender.sendMessage(message);
+            }
             return;
         }
+
         lastCheck = now;
-        GrimAPI.INSTANCE.getScheduler().getAsyncScheduler().runNow(GrimAPI.INSTANCE.getGrimPlugin(), () -> checkForUpdates(sender));
+        GrimAPI.INSTANCE.getScheduler().getAsyncScheduler().runNow(
+                GrimAPI.INSTANCE.getGrimPlugin(),
+                new Runnable() {
+                    @Override
+                    public void run() {
+                        checkForUpdates(sender);
+                    }
+                });
     }
 
     // Using UserAgent format recommended by https://docs.modrinth.com/api/
     @SuppressWarnings("deprecation")
     private static void checkForUpdates(Sender sender) {
-        try {
-            //
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(CommonGrimArguments.API_URL.value() + "updates"))
-                    .GET()
-                    .header("User-Agent", "GrimAC/" + GrimAPI.INSTANCE.getExternalAPI().getGrimVersion())
-                    .header("Content-Type", "application/json")
-                    .timeout(Duration.of(CommonGrimArguments.URL_TIMEOUT.value(), ChronoUnit.MILLIS))
-                    .build();
+        HttpURLConnection connection = null;
 
-            HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
-            final int statusCode = response.statusCode();
+        try {
+            URL url = new URL(CommonGrimArguments.API_URL.value() + "updates");
+            connection = (HttpURLConnection) url.openConnection();
+
+            int timeout = (int) CommonGrimArguments.URL_TIMEOUT.value();
+            connection.setRequestMethod("GET");
+            connection.setConnectTimeout(timeout);
+            connection.setReadTimeout(timeout);
+            connection.setRequestProperty("User-Agent", "GrimAC/" + GrimAPI.INSTANCE.getExternalAPI().getGrimVersion());
+            connection.setRequestProperty("Content-Type", "application/json");
+
+            final int statusCode = connection.getResponseCode();
+
             if (statusCode < 200 || statusCode >= 300) {
                 Component msg = updateMessage.get();
-                sender.sendMessage(Objects.requireNonNullElseGet(msg, () -> Component.text()
-                        .append(MessageUtil.miniMessage("%prefix%"))
-                        .append(Component.text(" Failed to check latest GrimAC version. Update server responded with status code: ")
-                                .color(NamedTextColor.YELLOW))
-                        .append(Component.text(statusCode)
-                                .color(getColorForStatusCode(statusCode))
-                                .decorate(TextDecoration.BOLD))
-                        .build()));
+
+                if (msg == null) {
+                    msg = Component.text()
+                            .append(MessageUtil.miniMessage("%prefix%"))
+                            .append(Component.text(" Failed to check latest GrimAC version. Update server responded with status code: ")
+                                    .color(NamedTextColor.YELLOW))
+                            .append(Component.text(statusCode)
+                                    .color(getColorForStatusCode(statusCode))
+                                    .decorate(TextDecoration.BOLD))
+                            .build();
+                }
+
+                sender.sendMessage(msg);
                 return;
             }
+
             // Using old JsonParser method, as old versions of Gson don't include the static one
-            JsonObject object = new JsonParser().parse(response.body()).getAsJsonObject();
+            JsonObject object = new JsonParser().parse(readBody(connection)).getAsJsonObject();
+
             String downloadPage = getJsonString(object, "download_page", "Unknown");
             String latest = getJsonString(object, "latest_version", "Unknown");
             @Nullable String warning = getJsonString(object, "warning", null);
+
             // allow status to be overridden if provided
             Status status;
             if (object.has("status")) {
@@ -92,32 +110,72 @@ public class GrimVersion implements BuildableCommand {
             } else {
                 status = Status.SemVer.getVersionStatus(GrimAPI.INSTANCE.getExternalAPI().getGrimVersion(), latest);
             }
-            //
-            Component msg = switch (status) {
-                case AHEAD ->
-                        Component.text("You are using a development version of GrimAC").color(NamedTextColor.LIGHT_PURPLE);
-                case UPDATED ->
-                        Component.text("You are using the latest version of GrimAC").color(NamedTextColor.GREEN);
-                case OUTDATED -> Component.text()
-                        .append(Component.text("New GrimAC version found!").color(NamedTextColor.AQUA))
-                        .append(Component.text(" Version ").color(NamedTextColor.GRAY))
-                        .append(Component.text(latest).color(NamedTextColor.GRAY).decorate(TextDecoration.ITALIC))
-                        .append(Component.text(" is available to be downloaded here: ").color(NamedTextColor.GRAY))
-                        .append(Component.text(downloadPage).color(NamedTextColor.GRAY).decorate(TextDecoration.UNDERLINED)
-                                .clickEvent(ClickEvent.openUrl(downloadPage)))
-                        .build();
-                case UNKNOWN ->
-                        Component.text("You are using an unknown GrimAC version.").color(NamedTextColor.RED);
-            };
-            // in case of a critical exploit that requires attention, allow us to provide a warning
-            if (warning != null && !warning.isBlank()) {
-                msg = msg.append(Component.text().append(Component.text(warning).color(NamedTextColor.RED)).build());
+
+            Component msg;
+
+            switch (status) {
+                case AHEAD:
+                    msg = Component.text("You are using a development version of GrimAC")
+                            .color(NamedTextColor.LIGHT_PURPLE);
+                    break;
+
+                case UPDATED:
+                    msg = Component.text("You are using the latest version of GrimAC")
+                            .color(NamedTextColor.GREEN);
+                    break;
+
+                case OUTDATED:
+                    msg = Component.text()
+                            .append(Component.text("New GrimAC version found!").color(NamedTextColor.AQUA))
+                            .append(Component.text(" Version ").color(NamedTextColor.GRAY))
+                            .append(Component.text(latest).color(NamedTextColor.GRAY).decorate(TextDecoration.ITALIC))
+                            .append(Component.text(" is available to be downloaded here: ").color(NamedTextColor.GRAY))
+                            .append(Component.text(downloadPage).color(NamedTextColor.GRAY).decorate(TextDecoration.UNDERLINED)
+                                    .clickEvent(ClickEvent.openUrl(downloadPage)))
+                            .build();
+                    break;
+
+                case UNKNOWN:
+                default:
+                    msg = Component.text("You are using an unknown GrimAC version.")
+                            .color(NamedTextColor.RED);
+                    break;
             }
+
+            // in case of a critical exploit that requires attention, allow us to provide a warning
+            if (warning != null && !warning.trim().isEmpty()) {
+                msg = msg.append(Component.text()
+                        .append(Component.text(warning).color(NamedTextColor.RED))
+                        .build());
+            }
+
             updateMessage.set(msg);
             sender.sendMessage(msg);
         } catch (Exception e) {
             sender.sendMessage(Component.text("Failed to check latest version.").color(NamedTextColor.RED));
             LogUtil.error("Failed to check latest GrimAC version.", e);
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
+        }
+    }
+
+    private static String readBody(HttpURLConnection connection) throws Exception {
+        InputStream inputStream = connection.getInputStream();
+        BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, "UTF-8"));
+
+        try {
+            StringBuilder builder = new StringBuilder();
+            String line;
+
+            while ((line = reader.readLine()) != null) {
+                builder.append(line);
+            }
+
+            return builder.toString();
+        } finally {
+            reader.close();
         }
     }
 
@@ -135,6 +193,7 @@ public class GrimVersion implements BuildableCommand {
         } else if (code >= 200) { // Success (e.g., 200, 201)
             return NamedTextColor.GREEN;
         }
+
         return NamedTextColor.GRAY; // Default for 1xx codes or others
     }
 
@@ -153,7 +212,6 @@ public class GrimVersion implements BuildableCommand {
         checkForUpdatesAsync(sender);
     }
 
-
     @AllArgsConstructor
     private enum Status {
         AHEAD("ahead"),
@@ -165,8 +223,11 @@ public class GrimVersion implements BuildableCommand {
 
         public static Status getStatus(String id) {
             for (Status status : Status.values()) {
-                if (status.id.equals(id)) return status;
+                if (status.id.equals(id)) {
+                    return status;
+                }
             }
+
             return UNKNOWN;
         }
 
@@ -174,15 +235,20 @@ public class GrimVersion implements BuildableCommand {
 
             public static Status getVersionStatus(String current, String latest) {
                 try {
-                    var cmp = compareSemver(current, latest);
+                    int cmp = compareSemver(current, latest);
+
                     if (cmp == 0) {
                         return Status.UPDATED;
                     }
+
                     if (cmp < 0) {
                         return Status.OUTDATED;
                     }
+
                     return Status.AHEAD;
-                } catch (Exception ignored) {}
+                } catch (Exception ignored) {
+                }
+
                 return Status.UNKNOWN;
             }
 
@@ -195,9 +261,16 @@ public class GrimVersion implements BuildableCommand {
 
             public static int[] parseVersion(String version) {
                 String core = normalizeCoreVersion(version);
-                if (core.isEmpty()) return null;
+
+                if (core.isEmpty()) {
+                    return null;
+                }
+
                 String[] parts = core.split("\\.");
-                if (parts.length < 1) return null;
+
+                if (parts.length < 1) {
+                    return null;
+                }
 
                 int major = parseInt(parts[0]);
                 int minor = parts.length > 1 ? parseInt(parts[1]) : 0;
@@ -207,7 +280,7 @@ public class GrimVersion implements BuildableCommand {
                     return null;
                 }
 
-                return new int[] { major, minor, patch };
+                return new int[]{major, minor, patch};
             }
 
             private static int parseInt(String str) {
@@ -221,12 +294,21 @@ public class GrimVersion implements BuildableCommand {
             public static int compareSemver(String a, String b) {
                 int[] pa = parseVersion(a);
                 int[] pb = parseVersion(b);
-                if (pa == null || pb == null) return 0;
+
+                if (pa == null || pb == null) {
+                    return 0;
+                }
 
                 for (int i = 0; i < 3; i++) {
-                    if (pa[i] < pb[i]) return -1;
-                    if (pa[i] > pb[i]) return 1;
+                    if (pa[i] < pb[i]) {
+                        return -1;
+                    }
+
+                    if (pa[i] > pb[i]) {
+                        return 1;
+                    }
                 }
+
                 return 0;
             }
         }

@@ -60,29 +60,34 @@ public enum HitboxData implements HitBoxFactory {
         return boxes;
     }, StateTypes.VINE),
 
-    RAILS((player, item, version, data, isTargetBlock, x, y, z) -> switch (data.getShape()) {
-        case ASCENDING_NORTH, ASCENDING_SOUTH, ASCENDING_EAST, ASCENDING_WEST -> {
-            if (version.isOlderThan(ClientVersion.V_1_8)) {
-                StateType railType = data.getType();
-                // Activator rails always appear as flat detector rails in 1.7.10 because of ViaVersion
-                // Ascending power rails in 1.7 have flat rail hitbox https://bugs.mojang.com/browse/MC-9134
-                if (railType == StateTypes.ACTIVATOR_RAIL || (railType == StateTypes.POWERED_RAIL && data.isPowered())) {
-                    yield new SimpleCollisionBox(0.0F, 0.0F, 0.0F, 1.0F, 0.125F, 1.0F, false);
-                }
-                yield new SimpleCollisionBox(0.0F, 0.0F, 0.0F, 1.0F, 0.625F, 1.0F, false);
-            } else if (version.isOlderThan(ClientVersion.V_1_9)) {
-                yield new SimpleCollisionBox(0.0F, 0.0F, 0.0F, 1.0F, 0.625F, 1.0F, false);
-            } else if (version.isNewerThanOrEquals(ClientVersion.V_1_9) && version.isOlderThan(ClientVersion.V_1_10)) {
-                // https://bugs.mojang.com/browse/MC-89552 sloped rails in 1.9 - it is slightly taller than a regular rail
-                yield new SimpleCollisionBox(0.0F, 0.0F, 0.0F, 1.0F, 0.15625F, 1.0F, false);
-            } else if (version.isOlderThan(ClientVersion.V_1_11)) {
-                // https://bugs.mojang.com/browse/MC-102638 All sloped rails are full blocks in 1.10
-                yield new SimpleCollisionBox(0, 0, 0, 1, 1, 1, true);
-            }
-            yield new HexCollisionBox(0.0D, 0.0D, 0.0D, 16.0D, 8.0D, 16.0D);
-        }
-        default -> new HexCollisionBox(0.0D, 0.0D, 0.0D, 16.0D, 2.0D, 16.0D);
-    }, BlockTags.RAILS.getStates().toArray(new StateType[0])),
+    RAILS((player, item, version, data, isTargetBlock, x, y, z) -> {
+switch (data.getShape()) {
+    case ASCENDING_NORTH:
+    case ASCENDING_SOUTH:
+    case ASCENDING_EAST:
+    case ASCENDING_WEST:
+        if (version.isOlderThan(ClientVersion.V_1_8)) {
+                        StateType railType = data.getType();
+                        // Activator rails always appear as flat detector rails in 1.7.10 because of ViaVersion
+                        // Ascending power rails in 1.7 have flat rail hitbox https://bugs.mojang.com/browse/MC-9134
+                        if (railType == StateTypes.ACTIVATOR_RAIL || (railType == StateTypes.POWERED_RAIL && data.isPowered())) {
+                            return new SimpleCollisionBox(0.0F, 0.0F, 0.0F, 1.0F, 0.125F, 1.0F, false);
+                        }
+                        return new SimpleCollisionBox(0.0F, 0.0F, 0.0F, 1.0F, 0.625F, 1.0F, false);
+                    } else if (version.isOlderThan(ClientVersion.V_1_9)) {
+                        return new SimpleCollisionBox(0.0F, 0.0F, 0.0F, 1.0F, 0.625F, 1.0F, false);
+                    } else if (version.isNewerThanOrEquals(ClientVersion.V_1_9) && version.isOlderThan(ClientVersion.V_1_10)) {
+                        // https://bugs.mojang.com/browse/MC-89552 sloped rails in 1.9 - it is slightly taller than a regular rail
+                        return new SimpleCollisionBox(0.0F, 0.0F, 0.0F, 1.0F, 0.15625F, 1.0F, false);
+                    } else if (version.isOlderThan(ClientVersion.V_1_11)) {
+                        // https://bugs.mojang.com/browse/MC-102638 All sloped rails are full blocks in 1.10
+                        return new SimpleCollisionBox(0, 0, 0, 1, 1, 1, true);
+                    }
+                    return new HexCollisionBox(0.0D, 0.0D, 0.0D, 16.0D, 8.0D, 16.0D);
+    default:
+        return new HexCollisionBox(0.0D, 0.0D, 0.0D, 16.0D, 2.0D, 16.0D);
+}
+}, BlockTags.RAILS.getStates().toArray(new StateType[0])),
 
     END_PORTAL((player, item, version, data, isTargetBlock, x, y, z) -> {
         if (version.isOlderThan(ClientVersion.V_1_9)) {
@@ -145,31 +150,34 @@ public enum HitboxData implements HitBoxFactory {
             }
         }
 
-        return switch (face) {
-            case FLOOR -> {
-                // X-AXIS
-                if (facing == BlockFace.EAST || facing == BlockFace.WEST) {
-                    yield new SimpleCollisionBox(0.25, 0.0, 0.3125, 0.75, 0.375, 0.6875, false);
-                }
-                // Z-AXIS
-                yield new SimpleCollisionBox(0.3125, 0.0, 0.25, 0.6875, 0.375, 0.75, false);
-                // Z-AXIS
-            }
-            case WALL -> switch (facing) {
-                case EAST -> new SimpleCollisionBox(0.0, 0.25, 0.3125, 0.375, 0.75, 0.6875, false);
-                case WEST -> new SimpleCollisionBox(0.625, 0.25, 0.3125, 1.0, 0.75, 0.6875, false);
-                case SOUTH -> new SimpleCollisionBox(0.3125, 0.25, 0.0, 0.6875, 0.75, 0.375, false);
-                default -> new SimpleCollisionBox(0.3125, 0.25, 0.625, 0.6875, 0.75, 1.0, false);
-            };
-            default -> {
-                // X-AXIS
-                if (facing == BlockFace.EAST || facing == BlockFace.WEST) {
-                    yield new SimpleCollisionBox(0.25, 0.625, 0.3125, 0.75, 1.0, 0.6875, false);
-                }
-                // Z-Axis
-                yield new SimpleCollisionBox(0.3125, 0.625, 0.25, 0.6875, 1.0, 0.75, false);
-            }
-        };
+        switch (face) {
+    case FLOOR:
+        // X-AXIS
+                        if (facing == BlockFace.EAST || facing == BlockFace.WEST) {
+                            return new SimpleCollisionBox(0.25, 0.0, 0.3125, 0.75, 0.375, 0.6875, false);
+                        }
+                        // Z-AXIS
+                        return new SimpleCollisionBox(0.3125, 0.0, 0.25, 0.6875, 0.375, 0.75, false);
+                        // Z-AXIS
+    case WALL:
+        switch (facing) {
+            case EAST:
+                return new SimpleCollisionBox(0.0, 0.25, 0.3125, 0.375, 0.75, 0.6875, false);
+            case WEST:
+                return new SimpleCollisionBox(0.625, 0.25, 0.3125, 1.0, 0.75, 0.6875, false);
+            case SOUTH:
+                return new SimpleCollisionBox(0.3125, 0.25, 0.0, 0.6875, 0.75, 0.375, false);
+            default:
+                return new SimpleCollisionBox(0.3125, 0.25, 0.625, 0.6875, 0.75, 1.0, false);
+        }
+    default:
+        // X-AXIS
+                        if (facing == BlockFace.EAST || facing == BlockFace.WEST) {
+                            return new SimpleCollisionBox(0.25, 0.625, 0.3125, 0.75, 1.0, 0.6875, false);
+                        }
+                        // Z-Axis
+                        return new SimpleCollisionBox(0.3125, 0.625, 0.25, 0.6875, 1.0, 0.75, false);
+}
     }), StateTypes.LEVER),
 
     BUTTON((player, item, version, data, isTargetBlock, x, y, z) -> {
@@ -203,17 +211,20 @@ public enum HitboxData implements HitBoxFactory {
 
         switch (face) {
             case WALL:
-                return switch (facing) {
-                    case EAST ->
-                            powered ? new HexCollisionBox(0.0, 6.0, 5.0, 1.0, 10.0, 11.0) : new HexCollisionBox(0.0, 6.0, 5.0, 2.0, 10.0, 11.0);
-                    case WEST ->
-                            powered ? new HexCollisionBox(15.0, 6.0, 5.0, 16.0, 10.0, 11.0) : new HexCollisionBox(14.0, 6.0, 5.0, 16.0, 10.0, 11.0);
-                    case SOUTH ->
-                            powered ? new HexCollisionBox(5.0, 6.0, 0.0, 11.0, 10.0, 1.0) : new HexCollisionBox(5.0, 6.0, 0.0, 11.0, 10.0, 2.0);
-                    case NORTH, UP, DOWN ->
-                            powered ? new HexCollisionBox(5.0, 6.0, 15.0, 11.0, 10.0, 16.0) : new HexCollisionBox(5.0, 6.0, 14.0, 11.0, 10.0, 16.0);
-                    default -> NoCollisionBox.INSTANCE;
-                };
+                switch (facing) {
+    case EAST:
+        return powered ? new HexCollisionBox(0.0, 6.0, 5.0, 1.0, 10.0, 11.0) : new HexCollisionBox(0.0, 6.0, 5.0, 2.0, 10.0, 11.0);
+    case WEST:
+        return powered ? new HexCollisionBox(15.0, 6.0, 5.0, 16.0, 10.0, 11.0) : new HexCollisionBox(14.0, 6.0, 5.0, 16.0, 10.0, 11.0);
+    case SOUTH:
+        return powered ? new HexCollisionBox(5.0, 6.0, 0.0, 11.0, 10.0, 1.0) : new HexCollisionBox(5.0, 6.0, 0.0, 11.0, 10.0, 2.0);
+    case NORTH:
+    case UP:
+    case DOWN:
+        return powered ? new HexCollisionBox(5.0, 6.0, 15.0, 11.0, 10.0, 16.0) : new HexCollisionBox(5.0, 6.0, 14.0, 11.0, 10.0, 16.0);
+    default:
+        return NoCollisionBox.INSTANCE;
+}
             case CEILING:
                 // ViaVersion shows lever
                 if (player.getClientVersion().isOlderThan(ClientVersion.V_1_8)) {
@@ -243,28 +254,47 @@ public enum HitboxData implements HitBoxFactory {
 
     WALL(new DynamicHitboxWall(), BlockTags.WALLS.getStates().toArray(new StateType[0])),
 
-    WALL_SIGN((player, item, version, data, isTargetBlock, x, y, z) -> switch (data.getFacing()) {
-        case NORTH -> new HexCollisionBox(0.0, 4.5, 14.0, 16.0, 12.5, 16.0);
-        case SOUTH -> new HexCollisionBox(0.0, 4.5, 0.0, 16.0, 12.5, 2.0);
-        case EAST -> new HexCollisionBox(0.0, 4.5, 0.0, 2.0, 12.5, 16.0);
-        case WEST -> new HexCollisionBox(14.0, 4.5, 0.0, 16.0, 12.5, 16.0);
-        default -> NoCollisionBox.INSTANCE;
-    }, BlockTags.WALL_SIGNS.getStates().toArray(new StateType[0])),
+    WALL_SIGN((player, item, version, data, isTargetBlock, x, y, z) -> {
+switch (data.getFacing()) {
+    case NORTH:
+        return new HexCollisionBox(0.0, 4.5, 14.0, 16.0, 12.5, 16.0);
+    case SOUTH:
+        return new HexCollisionBox(0.0, 4.5, 0.0, 16.0, 12.5, 2.0);
+    case EAST:
+        return new HexCollisionBox(0.0, 4.5, 0.0, 2.0, 12.5, 16.0);
+    case WEST:
+        return new HexCollisionBox(14.0, 4.5, 0.0, 16.0, 12.5, 16.0);
+    default:
+        return NoCollisionBox.INSTANCE;
+}
+}, BlockTags.WALL_SIGNS.getStates().toArray(new StateType[0])),
 
-    CEILING_HANGING_SIGNS((player, item, version, data, isTargetBlock, x, y, z) -> switch (data.getRotation()) {
-        case 0, 8 -> new HexCollisionBox(1.0, 0.0, 7.0, 15.0, 10.0, 9.0);
-        case 4, 12 -> new HexCollisionBox(7.0, 0.0, 1.0, 9.0, 10.0, 15.0);
-        default -> new HexCollisionBox(3.0, 0.0, 3.0, 13.0, 16.0, 13.0);
-    }, BlockTags.CEILING_HANGING_SIGNS.getStates().toArray(new StateType[0])),
+    CEILING_HANGING_SIGNS((player, item, version, data, isTargetBlock, x, y, z) -> {
+switch (data.getRotation()) {
+    case 0:
+    case 8:
+        return new HexCollisionBox(1.0, 0.0, 7.0, 15.0, 10.0, 9.0);
+    case 4:
+    case 12:
+        return new HexCollisionBox(7.0, 0.0, 1.0, 9.0, 10.0, 15.0);
+    default:
+        return new HexCollisionBox(3.0, 0.0, 3.0, 13.0, 16.0, 13.0);
+}
+}, BlockTags.CEILING_HANGING_SIGNS.getStates().toArray(new StateType[0])),
 
-    WALL_HANGING_SIGN((player, item, version, data, isTargetBlock, x, y, z) -> switch (data.getFacing()) {
-        case NORTH, SOUTH -> new ComplexCollisionBox(2,
+    WALL_HANGING_SIGN((player, item, version, data, isTargetBlock, x, y, z) -> {
+switch (data.getFacing()) {
+    case NORTH:
+    case SOUTH:
+        return new ComplexCollisionBox(2,
                 new HexCollisionBox(0.0D, 14.0D, 6.0D, 16.0D, 16.0D, 10.0D),
                 new HexCollisionBox(1.0D, 0.0D, 7.0D, 15.0D, 10.0D, 9.0D));
-        default -> new ComplexCollisionBox(2,
+    default:
+        return new ComplexCollisionBox(2,
                 new HexCollisionBox(6.0D, 14.0D, 0.0D, 10.0D, 16.0D, 16.0D),
                 new HexCollisionBox(7.0D, 0.0D, 1.0D, 9.0D, 10.0D, 15.0D));
-    }, BlockTags.WALL_HANGING_SIGNS.getStates().toArray(new StateType[0])),
+}
+}, BlockTags.WALL_HANGING_SIGNS.getStates().toArray(new StateType[0])),
 
     STANDING_SIGN((player, item, version, data, isTargetBlock, x, y, z) ->
             new HexCollisionBox(4.0, 0.0, 4.0, 12.0, 16.0, 12.0),
@@ -290,14 +320,18 @@ public enum HitboxData implements HitBoxFactory {
             return WALL_SIGN.dynamic.fetch(player, item, version, data, isTargetBlock, x, y, z);
         }
 
-        return switch (data.getFacing()) {
-            case NORTH -> new HexCollisionBox(0.0, 0.0, 14.0, 16.0, 12.5, 16.0);
-            case EAST -> new HexCollisionBox(0.0, 0.0, 0.0, 2.0, 12.5, 16.0);
-            case WEST -> new HexCollisionBox(14.0, 0.0, 0.0, 16.0, 12.5, 16.0);
-            case SOUTH -> new HexCollisionBox(0.0, 0.0, 0.0, 16.0, 12.5, 2.0);
-            default ->
-                    throw new IllegalStateException("Impossible Banner Facing State; Something very wrong is going on");
-        };
+        switch (data.getFacing()) {
+    case NORTH:
+        return new HexCollisionBox(0.0, 0.0, 14.0, 16.0, 12.5, 16.0);
+    case EAST:
+        return new HexCollisionBox(0.0, 0.0, 0.0, 2.0, 12.5, 16.0);
+    case WEST:
+        return new HexCollisionBox(14.0, 0.0, 0.0, 16.0, 12.5, 16.0);
+    case SOUTH:
+        return new HexCollisionBox(0.0, 0.0, 0.0, 16.0, 12.5, 2.0);
+    default:
+        throw new IllegalStateException("Impossible Banner Facing State; Something very wrong is going on");
+}
     }, StateTypes.WHITE_WALL_BANNER, StateTypes.ORANGE_WALL_BANNER, StateTypes.MAGENTA_WALL_BANNER,
             StateTypes.LIGHT_BLUE_WALL_BANNER, StateTypes.YELLOW_WALL_BANNER, StateTypes.LIME_WALL_BANNER,
             StateTypes.PINK_WALL_BANNER, StateTypes.GRAY_WALL_BANNER, StateTypes.LIGHT_GRAY_WALL_BANNER,
@@ -459,12 +493,16 @@ public enum HitboxData implements HitBoxFactory {
         if (version.isOlderThan(ClientVersion.V_1_13))
             return new HexCollisionBox(7.0D, 0.0D, 7.0D, 9.0D, 16.0D, 9.0D);
 
-        return switch (data.getFacing()) {
-            case SOUTH -> new HexCollisionBox(6.0D, 0.0D, 6.0D, 10.0D, 10.0D, 16.0D);
-            case WEST -> new HexCollisionBox(0.0D, 0.0D, 6.0D, 10.0D, 10.0D, 10.0D);
-            case NORTH -> new HexCollisionBox(6.0D, 0.0D, 0.0D, 10.0D, 10.0D, 10.0D);
-            default -> new HexCollisionBox(6.0D, 0.0D, 6.0D, 16.0D, 10.0D, 10.0D);
-        };
+        switch (data.getFacing()) {
+    case SOUTH:
+        return new HexCollisionBox(6.0D, 0.0D, 6.0D, 10.0D, 10.0D, 16.0D);
+    case WEST:
+        return new HexCollisionBox(0.0D, 0.0D, 6.0D, 10.0D, 10.0D, 10.0D);
+    case NORTH:
+        return new HexCollisionBox(6.0D, 0.0D, 0.0D, 10.0D, 10.0D, 10.0D);
+    default:
+        return new HexCollisionBox(6.0D, 0.0D, 6.0D, 16.0D, 10.0D, 10.0D);
+}
     }, StateTypes.ATTACHED_MELON_STEM, StateTypes.ATTACHED_PUMPKIN_STEM),
 
     PUMPKIN_STEM((player, item, version, data, isTargetBlock, x, y, z) ->
@@ -497,13 +535,20 @@ public enum HitboxData implements HitBoxFactory {
             StateTypes.TUBE_CORAL_FAN, StateTypes.BRAIN_CORAL_FAN, StateTypes.BUBBLE_CORAL_FAN, StateTypes.FIRE_CORAL_FAN, StateTypes.HORN_CORAL_FAN,
             StateTypes.DEAD_TUBE_CORAL_FAN, StateTypes.DEAD_BRAIN_CORAL_FAN, StateTypes.DEAD_BUBBLE_CORAL_FAN, StateTypes.DEAD_FIRE_CORAL_FAN, StateTypes.DEAD_HORN_CORAL_FAN),
 
-    CORAL_WALL_FAN((player, item, version, data, isTargetBlock, x, y, z) -> switch (data.getFacing()) {
-        case NORTH -> new HexCollisionBox(0.0D, 4.0D, 5.0D, 16.0D, 12.0D, 16.0D);
-        case SOUTH -> new HexCollisionBox(0.0D, 4.0D, 0.0D, 16.0D, 12.0D, 11.0D);
-        case WEST -> new HexCollisionBox(5.0D, 4.0D, 0.0D, 16.0D, 12.0D, 16.0D);
-        case EAST -> new HexCollisionBox(0.0D, 4.0D, 0.0D, 11.0D, 12.0D, 16.0D);
-        default -> throw new UnsupportedOperationException();
-    }, combine(BlockTags.WALL_CORALS.getStates(),
+    CORAL_WALL_FAN((player, item, version, data, isTargetBlock, x, y, z) -> {
+switch (data.getFacing()) {
+    case NORTH:
+        return new HexCollisionBox(0.0D, 4.0D, 5.0D, 16.0D, 12.0D, 16.0D);
+    case SOUTH:
+        return new HexCollisionBox(0.0D, 4.0D, 0.0D, 16.0D, 12.0D, 11.0D);
+    case WEST:
+        return new HexCollisionBox(5.0D, 4.0D, 0.0D, 16.0D, 12.0D, 16.0D);
+    case EAST:
+        return new HexCollisionBox(0.0D, 4.0D, 0.0D, 11.0D, 12.0D, 16.0D);
+    default:
+        throw new UnsupportedOperationException();
+}
+}, combine(BlockTags.WALL_CORALS.getStates(),
             StateTypes.DEAD_TUBE_CORAL_WALL_FAN, StateTypes.DEAD_BRAIN_CORAL_WALL_FAN, StateTypes.DEAD_BUBBLE_CORAL_WALL_FAN, StateTypes.DEAD_FIRE_CORAL_WALL_FAN, StateTypes.DEAD_HORN_CORAL_WALL_FAN)
     ),
 
@@ -734,11 +779,17 @@ public enum HitboxData implements HitBoxFactory {
     }
 
     private static int getPropaguleMinHeight(int age) {
-        return switch (age) {
-            case 0, 1, 2 -> 13 - age * 3;
-            case 3, 4 -> (4 - age) * 3;
-            default -> throw new IllegalStateException("Impossible Propagule Height");
-        };
+        switch (age) {
+    case 0:
+    case 1:
+    case 2:
+        return 13 - age * 3;
+    case 3:
+    case 4:
+        return (4 - age) * 3;
+    default:
+        throw new IllegalStateException("Impossible Propagule Height");
+}
     }
 
     private static CollisionBox getVineCollisionBox(ClientVersion version, boolean isWeeping, boolean isBlock) {
@@ -761,24 +812,40 @@ public enum HitboxData implements HitBoxFactory {
 
     // TODO, optimize? We don't have to return a CCB and will never return NCB, use SCB.encompass()?
     private static CollisionBox getSegmentedHitBox(int segments, BlockFace facing, int height) {
-        return switch (segments) {
-            case 0 -> NoCollisionBox.INSTANCE;
-            case 1 -> switch (facing) {
-                case SOUTH -> new SimpleCollisionBox(0.5, 0, 0.5, 1, height / 16d, 1, false); // SE
-                case WEST -> new SimpleCollisionBox(0.5, 0, 0, 1, height / 16d, 0.5, false);  // NE
-                case NORTH -> new SimpleCollisionBox(0, 0, 0, 0.5, height / 16d, 0.5, false); // NW
-                case EAST -> new SimpleCollisionBox(0, 0, 0.5, 0.5, height / 16d, 1, false);  // SW
-                default -> throw new IllegalStateException("Unexpected value: " + facing);
-            };
-            case 2 -> switch (facing) {
-                case SOUTH -> new SimpleCollisionBox(0.5, 0, 0, 1, height / 16d, 1, false);
-                case WEST -> new SimpleCollisionBox(0, 0, 0.5, 1, height / 16d, 1, false);
-                case NORTH -> new SimpleCollisionBox(0, 0, 0, 0.5, height / 16d, 1, false);
-                case EAST -> new SimpleCollisionBox(0, 0, 0, 1, height / 16d, 0.5, false);
-                default -> throw new IllegalStateException("Unexpected value: " + facing);
-            };
-            case 3, 4 -> new SimpleCollisionBox(0, 0, 0, 1, height / 16d, 1, false);
-            default -> throw new IllegalStateException("Unexpected value: " + segments);
-        };
+        switch (segments) {
+    case 0:
+        return NoCollisionBox.INSTANCE;
+    case 1:
+        switch (facing) {
+            case SOUTH:
+                return new SimpleCollisionBox(0.5, 0, 0.5, 1, height / 16d, 1, false); // SE;
+            case WEST:
+                return new SimpleCollisionBox(0.5, 0, 0, 1, height / 16d, 0.5, false);  // NE;
+            case NORTH:
+                return new SimpleCollisionBox(0, 0, 0, 0.5, height / 16d, 0.5, false); // NW;
+            case EAST:
+                return new SimpleCollisionBox(0, 0, 0.5, 0.5, height / 16d, 1, false);  // SW;
+            default:
+                throw new IllegalStateException("Unexpected value: " + facing);
+        }
+    case 2:
+        switch (facing) {
+            case SOUTH:
+                return new SimpleCollisionBox(0.5, 0, 0, 1, height / 16d, 1, false);
+            case WEST:
+                return new SimpleCollisionBox(0, 0, 0.5, 1, height / 16d, 1, false);
+            case NORTH:
+                return new SimpleCollisionBox(0, 0, 0, 0.5, height / 16d, 1, false);
+            case EAST:
+                return new SimpleCollisionBox(0, 0, 0, 1, height / 16d, 0.5, false);
+            default:
+                throw new IllegalStateException("Unexpected value: " + facing);
+        }
+    case 3:
+    case 4:
+        return new SimpleCollisionBox(0, 0, 0, 1, height / 16d, 1, false);
+    default:
+        throw new IllegalStateException("Unexpected value: " + segments);
+}
     }
 }

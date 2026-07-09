@@ -82,6 +82,7 @@ import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -254,8 +255,8 @@ public final class DataStoreLifecycle implements StartableInitable, StoppableIni
                 MigrationContext mctx = buildMigrationContext(sessionBackend);
                 if (mctx == null) mctx = NO_OP_MIGRATION_CONTEXT;
 
-                Map<Category<?>, V2BackendBootstrap.Binding<?>> bindings = Map.of(
-                        V2InstanceRegistry.STARTUPS,
+                Map<Category<?>, V2BackendBootstrap.Binding<?>> bindings = new LinkedHashMap<>();
+                bindings.put(V2InstanceRegistry.STARTUPS,
                         new V2BackendBootstrap.Binding<>(
                                 StoreId.grim("server_startups"), V2BuiltinKinds.serverStartups()));
                 V2BackendBootstrap.Result result = V2BackendBootstrap.install(
@@ -281,9 +282,12 @@ public final class DataStoreLifecycle implements StartableInitable, StoppableIni
             throw new RuntimeException("no v2 routes installed");
         }
 
-        CategoryRouter router = startupRouteInstalled
-                ? new CategoryRouter(Map.of(V2InstanceRegistry.STARTUPS, V2InstanceRegistry.ROUTER_SENTINEL_BACKEND))
-                : new CategoryRouter(Map.of());
+        Map<Category<?>, Backend> startupRouterMap = new LinkedHashMap<>();
+        if (startupRouteInstalled) {
+            startupRouterMap.put(V2InstanceRegistry.STARTUPS, V2InstanceRegistry.ROUTER_SENTINEL_BACKEND);
+        }
+
+        CategoryRouter router = new CategoryRouter(startupRouterMap);
         boolean enforceOwnership = config.ownership().enforcePersistentUuidOwnership()
                 && config.ownership().duplicatePersistentUuidAction() != DuplicatePersistentUuidAction.ALLOW_UNSAFE;
         this.ownershipGate = new ServerOwnershipGate(enforceOwnership);
@@ -353,14 +357,15 @@ public final class DataStoreLifecycle implements StartableInitable, StoppableIni
             return out;
         }
 
-        if (backendConfig instanceof RedisBackendConfig redisConfig) {
+        if (backendConfig instanceof RedisBackendConfig) {
+            RedisBackendConfig redisConfig = (RedisBackendConfig) backendConfig;
             List<CheckCatalogRow> rows = loadRedisCheckCatalogRows(backend, redisConfig.keyPrefix());
             if (rows != null) return rows;
         }
 
         logger.warning("[grim-datastore] no persisted check catalog loader available for v2 backend '"
                 + backend.id() + "' - starting with an empty routed catalog view");
-        return List.of();
+        return Collections.emptyList();
     }
 
     private static @NotNull List<CheckCatalogRow> rowsFrom(@NotNull Iterable<CheckCatalogRow> rows) {
@@ -374,7 +379,10 @@ public final class DataStoreLifecycle implements StartableInitable, StoppableIni
         String stableKey = d.getString("stable_key");
         if (stableKey == null) {
             Object rawId = d.get("_id");
-            if (rawId instanceof String s) stableKey = s;
+            if (rawId instanceof String) {
+                String s = (String) rawId;
+                stableKey = s;
+            }
         }
         if (id == null || stableKey == null) return null;
         Number introducedAt = d.get("introduced_at", Number.class);
@@ -424,7 +432,10 @@ public final class DataStoreLifecycle implements StartableInitable, StoppableIni
                     cursor = (String) result.getClass().getMethod("getCursor").invoke(result);
                 } while (!"0".equals(cursor));
             } finally {
-                if (jedis instanceof AutoCloseable closeable) closeable.close();
+                if (jedis instanceof AutoCloseable) {
+                    AutoCloseable closeable = (AutoCloseable) jedis;
+                    closeable.close();
+                }
             }
             return out;
         } catch (ClassNotFoundException e) {
@@ -460,14 +471,25 @@ public final class DataStoreLifecycle implements StartableInitable, StoppableIni
 
     private @Nullable BackendV2 constructV2Direct(@NotNull String backendId,
                                                   @NotNull BackendConfig config) {
-        return switch (backendId) {
-            case "mongo" -> config instanceof MongoBackendConfig c ? new MongoBackendV2(c) : null;
-            case "postgres" -> config instanceof PostgresBackendConfig c ? new PostgresBackendV2(c) : null;
-            case "mysql" -> config instanceof MysqlBackendConfig c ? new MysqlBackendV2(c) : null;
-            case "sqlite" -> config instanceof SqliteBackendConfig c ? new SqliteBackendV2(c) : null;
-            case "redis" -> config instanceof RedisBackendConfig c ? new RedisBackendV2(c) : null;
-            default -> null;
-        };
+        switch (backendId) {
+            case "mongo":
+                return config instanceof MongoBackendConfig ? new MongoBackendV2((MongoBackendConfig) config) : null;
+
+            case "postgres":
+                return config instanceof PostgresBackendConfig ? new PostgresBackendV2((PostgresBackendConfig) config) : null;
+
+            case "mysql":
+                return config instanceof MysqlBackendConfig ? new MysqlBackendV2((MysqlBackendConfig) config) : null;
+
+            case "sqlite":
+                return config instanceof SqliteBackendConfig ? new SqliteBackendV2((SqliteBackendConfig) config) : null;
+
+            case "redis":
+                return config instanceof RedisBackendConfig ? new RedisBackendV2((RedisBackendConfig) config) : null;
+
+            default:
+                return null;
+        }
     }
 
     private @NotNull Map<Category<?>, V2BackendBootstrap.Binding<?>> bindingsForCategory(
@@ -847,7 +869,7 @@ public final class DataStoreLifecycle implements StartableInitable, StoppableIni
         try {
             Files.createDirectories(file.getParent());
             if (Files.exists(file)) {
-                String raw = Files.readString(file, StandardCharsets.UTF_8).trim();
+                String raw = new String(Files.readAllBytes(file), StandardCharsets.UTF_8).trim();
                 try {
                     return UUID.fromString(raw);
                 } catch (IllegalArgumentException e) {
@@ -859,10 +881,9 @@ public final class DataStoreLifecycle implements StartableInitable, StoppableIni
             }
 
             UUID generated = UUID.randomUUID();
-            Files.writeString(
+            Files.write(
                     file,
-                    generated + System.lineSeparator(),
-                    StandardCharsets.UTF_8,
+                    (generated + System.lineSeparator()).getBytes(StandardCharsets.UTF_8),
                     StandardOpenOption.CREATE_NEW);
             return generated;
         } catch (IOException e) {
@@ -935,7 +956,8 @@ public final class DataStoreLifecycle implements StartableInitable, StoppableIni
     }
 
     private @Nullable MigrationContext buildMigrationContext(@NotNull BackendV2 backend) {
-        if (backend instanceof MongoBackendV2 mongo) {
+        if (backend instanceof MongoBackendV2) {
+            MongoBackendV2 mongo = (MongoBackendV2) backend;
             MongoDatabase db = mongo.unwrap(MongoDatabase.class).orElse(null);
             if (db == null) return null;
             maybeWarnUnexpectedIdShape(db);
@@ -960,10 +982,14 @@ public final class DataStoreLifecycle implements StartableInitable, StoppableIni
                 if (first == null) continue;
                 Object id = first.get("_id");
                 if (id instanceof java.util.UUID) continue;
-                if (id instanceof Binary b
-                        && (b.getType() == BsonBinarySubType.BINARY.getValue()
-                        || b.getType() == BsonBinarySubType.UUID_STANDARD.getValue())
-                        && b.getData().length == 16) continue;
+                if (id instanceof Binary) {
+                    Binary b = (Binary) id;
+                    if ((b.getType() == BsonBinarySubType.BINARY.getValue()
+                            || b.getType() == BsonBinarySubType.UUID_STANDARD.getValue())
+                            && b.getData().length == 16) {
+                        continue;
+                    }
+                }
                 String idClass = id == null ? "null" : id.getClass().getSimpleName();
                 logger.warning(() -> "[grim-datastore] " + coll + " first-doc _id is "
                         + idClass + ", expected UUID-shaped binary -"
@@ -997,16 +1023,22 @@ public final class DataStoreLifecycle implements StartableInitable, StoppableIni
         List<NameResolverLink> links = new ArrayList<>();
         for (String id : chain) {
             switch (id) {
-                case "local-cache" -> {
+                case "local-cache":
                     if (playerIdentityRouted) {
                         links.add(new LocalCacheLink(store));
                     } else {
                         logger.warning("[grim-datastore] local-cache name resolver disabled; "
                                 + "missing player-identity route");
                     }
-                }
-                case "offline-mode-uuid" -> links.add(new OfflineModeUuidLink());
-                default -> logger.warning("[grim-datastore] unknown name-resolver link: " + id);
+                    break;
+
+                case "offline-mode-uuid":
+                    links.add(new OfflineModeUuidLink());
+                    break;
+
+                default:
+                    logger.warning("[grim-datastore] unknown name-resolver link: " + id);
+                    break;
             }
         }
         return new NameResolverChain(links);
@@ -1167,8 +1199,33 @@ public final class DataStoreLifecycle implements StartableInitable, StoppableIni
 
     @ApiStatus.Internal
     public @NotNull Map<String, Backend> allBackendsForCommands() {
-        return Map.of();
+        return Collections.emptyMap();
     }
 
-    private record SimpleContext(BackendConfig config, Logger logger, Path dataDirectory) implements BackendContext {}
+    private static final class SimpleContext implements BackendContext {
+        private final BackendConfig config;
+        private final Logger logger;
+        private final Path dataDirectory;
+
+        private SimpleContext(BackendConfig config, Logger logger, Path dataDirectory) {
+            this.config = config;
+            this.logger = logger;
+            this.dataDirectory = dataDirectory;
+        }
+
+        @Override
+        public BackendConfig config() {
+            return config;
+        }
+
+        @Override
+        public Logger logger() {
+            return logger;
+        }
+
+        @Override
+        public Path dataDirectory() {
+            return dataDirectory;
+        }
+    }
 }

@@ -308,7 +308,7 @@ public class Check extends GrimProcessor implements AbstractCheck {
     }
 
     private static @NotNull Supplier<String> memoize(@NotNull Supplier<String> supplier) {
-        return new Supplier<>() {
+        return new Supplier<String>() {
             private String value;
             private boolean computed;
 
@@ -328,6 +328,21 @@ public class Check extends GrimProcessor implements AbstractCheck {
         };
     }
 
-    private record BinaryVerbose(byte @NotNull [] data, @NotNull Supplier<String> rendered) {
+    private static final class BinaryVerbose {
+        private final byte @NotNull [] data;
+        private final @NotNull Supplier<String> rendered;
+
+        private BinaryVerbose(byte @NotNull [] data, @NotNull Supplier<String> rendered) {
+            this.data = data;
+            this.rendered = rendered;
+        }
+
+        public byte @NotNull [] data() {
+            return data;
+        }
+
+        public @NotNull Supplier<String> rendered() {
+            return rendered;
+        }
     }
 }

@@ -14,9 +14,15 @@ public class ExemptElytraFeature implements GrimFeature {
     @Override
     public void setState(GrimPlayer player, ConfigManager config, FeatureState state) {
         switch (state) {
-            case ENABLED -> player.setExemptElytra(true);
-            case DISABLED -> player.setExemptElytra(false);
-            default -> player.setExemptElytra(isEnabledInConfig(player, config));
+            case ENABLED:
+                player.setExemptElytra(true);
+                break;
+            case DISABLED:
+                player.setExemptElytra(false);
+                break;
+            default:
+                player.setExemptElytra(isEnabledInConfig(player, config));
+                break;
         }
     }
 

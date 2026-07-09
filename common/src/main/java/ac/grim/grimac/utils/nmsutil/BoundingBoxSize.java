@@ -63,12 +63,14 @@ public final class BoundingBoxSize {
         } else if (type == EntityTypes.CREAKING || type == EntityTypes.STRIDER || type == EntityTypes.COW || type == EntityTypes.SHEEP || type == EntityTypes.MOOSHROOM || type == EntityTypes.PIG || type == EntityTypes.LLAMA || type == EntityTypes.DOLPHIN || type == EntityTypes.WITHER || type == EntityTypes.TRADER_LLAMA || type == EntityTypes.WARDEN || type == EntityTypes.GOAT) {
             return 0.9f;
         } else if (type == EntityTypes.PHANTOM) {
-            if (packetEntity instanceof PacketEntitySizeable sizeable) {
+            if (packetEntity instanceof PacketEntitySizeable) {
+                PacketEntitySizeable sizeable = (PacketEntitySizeable) packetEntity;
                 return 0.9f + sizeable.size * 0.2f;
             }
 
             return 1.5f;
-        } else if (packetEntity instanceof PacketEntityGuardian guardian) { // TODO: 2.35 * guardian?
+        } else if (packetEntity instanceof PacketEntityGuardian) {
+            PacketEntityGuardian guardian = (PacketEntityGuardian) packetEntity; // TODO: 2.35 * guardian?
             return guardian.isElder ? 1.9975f : 0.85f;
         } else if (type == EntityTypes.END_CRYSTAL) {
             return 2f;
@@ -85,13 +87,15 @@ public final class BoundingBoxSize {
         } else if (type == EntityTypes.IRON_GOLEM) {
             return 1.4f;
         } else if (type == EntityTypes.SULFUR_CUBE && player.getClientVersion().isNewerThanOrEquals(ClientVersion.V_26_2)) {
-            if (packetEntity instanceof PacketEntitySizeable sizeable) {
+            if (packetEntity instanceof PacketEntitySizeable) {
+                PacketEntitySizeable sizeable = (PacketEntitySizeable) packetEntity;
                 return 0.49f * sizeable.size;
             }
 
             return 0.49f;
         } else if (type == EntityTypes.MAGMA_CUBE) {
-            if (packetEntity instanceof PacketEntitySizeable sizeable) {
+            if (packetEntity instanceof PacketEntitySizeable) {
+                PacketEntitySizeable sizeable = (PacketEntitySizeable) packetEntity;
                 float size = sizeable.size;
                 return player.getClientVersion().isNewerThanOrEquals(ClientVersion.V_1_20_5)
                         ? 0.52f * size : player.getClientVersion().isNewerThanOrEquals(ClientVersion.V_1_9)
@@ -116,7 +120,8 @@ public final class BoundingBoxSize {
         } else if (type == EntityTypes.SHULKER) {
             return 1f;
         } else if (type == EntityTypes.SLIME || (player.getClientVersion().isOlderThan(ClientVersion.V_26_2) && type == EntityTypes.SULFUR_CUBE)) {
-            if (packetEntity instanceof PacketEntitySizeable sizeable) {
+            if (packetEntity instanceof PacketEntitySizeable) {
+                PacketEntitySizeable sizeable = (PacketEntitySizeable) packetEntity;
                 float size = sizeable.size;
                 return player.getClientVersion().isNewerThanOrEquals(ClientVersion.V_1_20_5)
                         ? 0.52f * size : player.getClientVersion().isNewerThanOrEquals(ClientVersion.V_1_9)
@@ -161,7 +166,8 @@ public final class BoundingBoxSize {
         double y = box.minY;
         double z = (box.maxZ + box.minZ) / 2d;
 
-        if (entity instanceof PacketEntityTrackXRot xRotEntity) {
+        if (entity instanceof PacketEntityTrackXRot) {
+            PacketEntityTrackXRot xRotEntity = (PacketEntityTrackXRot) entity;
             // Horses desync here, and we can't do anything about it without interpolating animations.
             // Mojang just has to fix it.  I'm not attempting to fix it.
             // Striders also do the same with animations, causing a desync.
@@ -313,7 +319,8 @@ public final class BoundingBoxSize {
             return 1.7f;
         } else if (type == EntityTypes.DONKEY) {
             return 1.5f;
-        } else if (packetEntity instanceof PacketEntityGuardian guardian) { // TODO: 2.35 * guardian?
+        } else if (packetEntity instanceof PacketEntityGuardian) {
+            PacketEntityGuardian guardian = (PacketEntityGuardian) packetEntity; // TODO: 2.35 * guardian?
             return guardian.isElder ? 1.9975f : 0.85f;
         } else if (type == EntityTypes.ENDERMAN || type == EntityTypes.WARDEN) {
             return 2.9f;
@@ -345,13 +352,15 @@ public final class BoundingBoxSize {
         } else if (type == EntityTypes.TROPICAL_FISH) {
             return 0.4f;
         } else if (type == EntityTypes.SULFUR_CUBE && player.getClientVersion().isNewerThanOrEquals(ClientVersion.V_26_2)) {
-            if (packetEntity instanceof PacketEntitySizeable sizeable) {
+            if (packetEntity instanceof PacketEntitySizeable) {
+                PacketEntitySizeable sizeable = (PacketEntitySizeable) packetEntity;
                 return 0.49f * sizeable.size;
             }
 
             return 0.49f;
         } else if (type == EntityTypes.MAGMA_CUBE) {
-            if (packetEntity instanceof PacketEntitySizeable sizeable) {
+            if (packetEntity instanceof PacketEntitySizeable) {
+                PacketEntitySizeable sizeable = (PacketEntitySizeable) packetEntity;
                 float size = sizeable.size;
                 return player.getClientVersion().isNewerThanOrEquals(ClientVersion.V_1_20_5)
                         ? 0.52f * size : player.getClientVersion().isNewerThanOrEquals(ClientVersion.V_1_9)
@@ -371,7 +380,8 @@ public final class BoundingBoxSize {
         } else if (type == EntityTypes.PANDA) {
             return 1.25f;
         } else if (type == EntityTypes.PHANTOM) {
-            if (packetEntity instanceof PacketEntitySizeable sizeable) {
+            if (packetEntity instanceof PacketEntitySizeable) {
+                PacketEntitySizeable sizeable = (PacketEntitySizeable) packetEntity;
                 return 0.5f + sizeable.size * 0.1f;
             }
 
@@ -406,7 +416,8 @@ public final class BoundingBoxSize {
         } else if (type == EntityTypes.SKELETON_HORSE) {
             return 1.6f;
         } else if (type == EntityTypes.SLIME || (player.getClientVersion().isOlderThan(ClientVersion.V_26_2) && type == EntityTypes.SULFUR_CUBE)) {
-            if (packetEntity instanceof PacketEntitySizeable sizeable) {
+            if (packetEntity instanceof PacketEntitySizeable) {
+                PacketEntitySizeable sizeable = (PacketEntitySizeable) packetEntity;
                 float size = sizeable.size;
                 return player.getClientVersion().isNewerThanOrEquals(ClientVersion.V_1_20_5)
                         ? 0.52f * size : player.getClientVersion().isNewerThanOrEquals(ClientVersion.V_1_9)

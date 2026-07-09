@@ -12,7 +12,16 @@ import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public record CompiledDiscordTemplate(Segment[] segments) {
+public final class CompiledDiscordTemplate {
+    private final Segment[] segments;
+
+    public CompiledDiscordTemplate(Segment[] segments) {
+        this.segments = segments;
+    }
+
+    public Segment[] segments() {
+        return segments;
+    }
 
     /**
      * Markdown context as determined by a state-machine scan of the template.
@@ -45,11 +54,37 @@ public record CompiledDiscordTemplate(Segment[] segments) {
     // Identical to the existing pattern
     private static final Pattern PLACEHOLDER = Pattern.compile("%([a-zA-Z0-9_]+)%");
 
-    private sealed interface Segment permits Literal, Placeholder {}
+    private interface Segment {}
 
-    private record Literal(String text) implements Segment {}
+    private static final class Literal implements Segment {
+        private final String text;
 
-    private record Placeholder(String key, EscapeMode mode) implements Segment {}
+        private Literal(String text) {
+            this.text = text;
+        }
+
+        public String text() {
+            return text;
+        }
+    }
+
+    private static final class Placeholder implements Segment {
+        private final String key;
+        private final EscapeMode mode;
+
+        private Placeholder(String key, EscapeMode mode) {
+            this.key = key;
+            this.mode = mode;
+        }
+
+        public String key() {
+            return key;
+        }
+
+        public EscapeMode mode() {
+            return mode;
+        }
+    }
 
     // ──────────────────── COMPILE (once per config reload) ────────────────────
     public static CompiledDiscordTemplate compile(String template) {
@@ -65,11 +100,19 @@ public record CompiledDiscordTemplate(Segment[] segments) {
             // Advance the context through all the literal text before this placeholder
             ctx = advanceContext(ctx, gap);
 
-            EscapeMode mode = switch (ctx) {
-                case NORMAL -> EscapeMode.FULL_MARKDOWN;
-                case INLINE_CODE,
-                     CODE_BLOCK -> EscapeMode.CODE_SPAN;
-            };
+            EscapeMode mode;
+            switch (ctx) {
+                case NORMAL:
+                    mode = EscapeMode.FULL_MARKDOWN;
+                    break;
+                case INLINE_CODE:
+                case CODE_BLOCK:
+                    mode = EscapeMode.CODE_SPAN;
+                    break;
+                default:
+                    mode = EscapeMode.FULL_MARKDOWN;
+                    break;
+            }
             parts.add(new Placeholder(m.group(0), mode));
             lastEnd = m.end();
         }
@@ -77,7 +120,7 @@ public record CompiledDiscordTemplate(Segment[] segments) {
         if (lastEnd < template.length()) {
             parts.add(new Literal(template.substring(lastEnd)));
         }
-        return new CompiledDiscordTemplate(parts.toArray(Segment[]::new));
+        return new CompiledDiscordTemplate(parts.toArray(new Segment[0]));
     }
 
     // ──────────────────── RENDER (once per alert) ────────────────────
@@ -93,9 +136,11 @@ public record CompiledDiscordTemplate(Segment[] segments) {
                          char backtickReplacement) {
         StringBuilder sb = new StringBuilder(segments.length * 32);
         for (Segment seg : segments) {
-            if (seg instanceof Literal l) {
+            if (seg instanceof Literal) {
+                Literal l = (Literal) seg;
                 sb.append(l.text);
-            } else if (seg instanceof Placeholder p) {
+            } else if (seg instanceof Placeholder) {
+                Placeholder p = (Placeholder) seg;
                 // Priority: static → dynamic → external (PAPI)
                 String val = statics.get(p.key);
 
@@ -145,41 +190,77 @@ public record CompiledDiscordTemplate(Segment[] segments) {
             switch (c) {
                 // Backslash MUST be first — prevents our own escape backslashes
                 // from being re-escaped if the input already contains backslashes.
-                case '\\' -> sb.append("\\\\");
+                case '\\':
+                    sb.append("\\\\");
+                    break;
                 // Inline code spans (`text`)
-                case '`' -> sb.append("\\`");
+                case '`':
+                    sb.append("\\`");
+                    break;
                 // Bold (**text**) and italic (*text*)
-                case '*' -> sb.append("\\*");
+                case '*':
+                    sb.append("\\*");
+                    break;
                 // Underlined  (__text__) and italic (_text_)
-                case '_' -> sb.append("\\_");
+                case '_':
+                    sb.append("\\_");
+                    break;
                 // Strikethrough (~~text~~)
-                case '~' -> sb.append("\\~");
+                case '~':
+                    sb.append("\\~");
+                    break;
                 // Spoiler tags (||text||)
-                case '|' -> sb.append("\\|");
+                case '|':
+                    sb.append("\\|");
+                    break;
                 // Link [text](url) and image ![alt](url) syntax
-                case '[' -> sb.append("\\[");
-                case ']' -> sb.append("\\]");
-                case '(' -> sb.append("\\(");
-                case ')' -> sb.append("\\)");
+                case '[':
+                    sb.append("\\[");
+                    break;
+                case ']':
+                    sb.append("\\]");
+                    break;
+                case '(':
+                    sb.append("\\(");
+                    break;
+                case ')':
+                    sb.append("\\)");
+                    break;
                 // Auto-linking (https://...) and emoji (:name:)
-                case ':' -> sb.append("\\:");
+                case ':':
+                    sb.append("\\:");
+                    break;
                 // Timestamps (<t:...>), mentions (<@id>), custom emoji (<:n:id>),
                 // embed suppression (<url>)
-                case '<' -> sb.append("\\<");
+                case '<':
+                    sb.append("\\<");
+                    break;
                 // Headers (#, ##, ###), block quotes (>, >>>).
                 // Always escaped — \# and \> render identically to # and >.
-                case '#' -> sb.append("\\#");
-                case '>' -> sb.append("\\>");
+                case '#':
+                    sb.append("\\#");
+                    break;
+                case '>':
+                    sb.append("\\>");
+                    break;
                 // Unordered lists (- item) and subtext (-# text)
-                case '-' -> sb.append("\\-");
+                case '-':
+                    sb.append("\\-");
+                    break;
                 // Ordered lists (1. item). \. renders identically to .
-                case '.' -> sb.append("\\.");
+                case '.':
+                    sb.append("\\.");
+                    break;
                 // Newlines in injected values would break embed layout and enable
                 // line-start syntax injection (headers, quotes, lists).
                 // Replaced with literal "\n" text. Template newlines are unaffected
                 // (they pass through as Literal segments, not through this method).
-                case '\n' -> sb.append("\\n");
-                default -> sb.append(c);
+                case '\n':
+                    sb.append("\\n");
+                    break;
+                default:
+                    sb.append(c);
+                    break;
             }
         }
         return sb.toString();

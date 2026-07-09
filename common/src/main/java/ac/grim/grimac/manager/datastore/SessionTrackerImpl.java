@@ -7,6 +7,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -123,9 +124,69 @@ public final class SessionTrackerImpl implements SessionTracker {
         return incoming != null ? incoming : current;
     }
 
-    private record State(UUID sessionId,
-                         long startedEpochMs,
-                         long lastActivityEpochMs,
-                         long lastEmittedEpochMs,
-                         ClientMeta cachedMeta) {}
+    private static final class State {
+        private final UUID sessionId;
+        private final long startedEpochMs;
+        private final long lastActivityEpochMs;
+        private final long lastEmittedEpochMs;
+        private final ClientMeta cachedMeta;
+
+        private State(UUID sessionId,
+                      long startedEpochMs,
+                      long lastActivityEpochMs,
+                      long lastEmittedEpochMs,
+                      ClientMeta cachedMeta) {
+            this.sessionId = sessionId;
+            this.startedEpochMs = startedEpochMs;
+            this.lastActivityEpochMs = lastActivityEpochMs;
+            this.lastEmittedEpochMs = lastEmittedEpochMs;
+            this.cachedMeta = cachedMeta;
+        }
+
+        public UUID sessionId() {
+            return sessionId;
+        }
+
+        public long startedEpochMs() {
+            return startedEpochMs;
+        }
+
+        public long lastActivityEpochMs() {
+            return lastActivityEpochMs;
+        }
+
+        public long lastEmittedEpochMs() {
+            return lastEmittedEpochMs;
+        }
+
+        public ClientMeta cachedMeta() {
+            return cachedMeta;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (!(o instanceof State)) return false;
+            State state = (State) o;
+            return startedEpochMs == state.startedEpochMs
+                    && lastActivityEpochMs == state.lastActivityEpochMs
+                    && lastEmittedEpochMs == state.lastEmittedEpochMs
+                    && Objects.equals(sessionId, state.sessionId)
+                    && Objects.equals(cachedMeta, state.cachedMeta);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(sessionId, startedEpochMs, lastActivityEpochMs, lastEmittedEpochMs, cachedMeta);
+        }
+
+        @Override
+        public String toString() {
+            return "State[sessionId=" + sessionId
+                    + ", startedEpochMs=" + startedEpochMs
+                    + ", lastActivityEpochMs=" + lastActivityEpochMs
+                    + ", lastEmittedEpochMs=" + lastEmittedEpochMs
+                    + ", cachedMeta=" + cachedMeta + "]";
+        }
+    }
 }

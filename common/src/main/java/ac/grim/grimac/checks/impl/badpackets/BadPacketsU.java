@@ -51,7 +51,7 @@ public class BadPacketsU extends Check implements PacketCheck {
                         || cursor.z != 0
                         || packet.getSequence() != 0
                 ) {
-                    var buf = V.write(verbose())
+                    Verbose.Writer buf = V.write(verbose())
                             .mcPos(pos.x, pos.y, pos.z)
                             .cursor(cursor.x, cursor.y, cursor.z)
                             .bool(!failedItemCheck).sint(packet.getSequence());

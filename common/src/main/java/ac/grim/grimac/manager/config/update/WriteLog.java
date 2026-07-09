@@ -3,6 +3,7 @@ package ac.grim.grimac.manager.config.update;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -15,21 +16,43 @@ import java.util.logging.Logger;
  * {@link ConfigPatcher} so the bundled default's comments stay intact.
  */
 abstract class WriteLog {
-
     enum Op { PUT, REMOVE }
 
     /**
-     * @param value null for {@linkplain Op#REMOVE REMOVE}
+     * @param value null for {@link Op#REMOVE}
      */
-    record Entry(Op op, String path, Object value) {}
+    static final class Entry {
+        private final Op op;
+        private final String path;
+        private final Object value;
+
+        Entry(Op op, String path, Object value) {
+            this.op = op;
+            this.path = path;
+            this.value = value;
+        }
+
+        Op op() {
+            return op;
+        }
+
+        String path() {
+            return path;
+        }
+
+        Object value() {
+            return value;
+        }
+    }
 
     abstract void recordPut(@NotNull String path, @NotNull Object value);
+
     abstract void recordRemove(@NotNull String path);
 
     /**
-     * Snapshot of the log collapsed into a path -> value map (latest write
-     * wins per path; null sentinel = REMOVE). Used by the updater for
-     * own-file writes; sibling-file writes use {@link #drainQueue} instead.
+     * Snapshot of the log collapsed into a path -> value map (latest write wins
+     * per path; null sentinel = REMOVE). Used by the updater for own-file writes;
+     * sibling-file writes use the shared queue instead.
      */
     abstract @NotNull Map<String, Object> finalState();
 
@@ -42,9 +65,8 @@ abstract class WriteLog {
     }
 
     /**
-     * Sibling-file log: each {@code recordPut} / {@code recordRemove}
-     * appends to a shared per-filename queue that the updater flushes at
-     * the end of {@code updateAll()}.
+     * Sibling-file log: each recordPut / recordRemove appends to a shared
+     * per-filename queue that the updater flushes at the end of updateAll().
      */
     static @NotNull WriteLog sibling(@NotNull String siblingName,
                                      @NotNull Map<String, List<Entry>> sharedQueue,
@@ -53,20 +75,23 @@ abstract class WriteLog {
     }
 
     private static final class ActiveLog extends WriteLog {
-        private final List<Entry> entries = new ArrayList<>();
+        private final List<Entry> entries = new ArrayList<Entry>();
 
-        @Override void recordPut(@NotNull String path, @NotNull Object value) {
+        @Override
+        void recordPut(@NotNull String path, @NotNull Object value) {
             entries.add(new Entry(Op.PUT, path, value));
         }
 
-        @Override void recordRemove(@NotNull String path) {
+        @Override
+        void recordRemove(@NotNull String path) {
             entries.add(new Entry(Op.REMOVE, path, null));
         }
 
-        @Override @NotNull Map<String, Object> finalState() {
-            Map<String, Object> out = new LinkedHashMap<>();
+        @Override
+        @NotNull Map<String, Object> finalState() {
+            Map<String, Object> out = new LinkedHashMap<String, Object>();
             for (Entry e : entries) {
-                out.put(e.path, e.op == Op.PUT ? e.value : null);
+                out.put(e.path(), e.op() == Op.PUT ? e.value() : null);
             }
             return out;
         }
@@ -75,9 +100,18 @@ abstract class WriteLog {
     private static final class NoopLog extends WriteLog {
         static final NoopLog INSTANCE = new NoopLog();
 
-        @Override void recordPut(@NotNull String path, @NotNull Object value) {}
-        @Override void recordRemove(@NotNull String path) {}
-        @Override @NotNull Map<String, Object> finalState() { return Map.of(); }
+        @Override
+        void recordPut(@NotNull String path, @NotNull Object value) {
+        }
+
+        @Override
+        void recordRemove(@NotNull String path) {
+        }
+
+        @Override
+        @NotNull Map<String, Object> finalState() {
+            return Collections.emptyMap();
+        }
     }
 
     private static final class SiblingLog extends WriteLog {
@@ -91,20 +125,27 @@ abstract class WriteLog {
             this.logger = logger;
         }
 
-        @Override void recordPut(@NotNull String path, @NotNull Object value) {
-            sharedQueue.computeIfAbsent(siblingName, k -> new ArrayList<>())
-                    .add(new Entry(Op.PUT, path, value));
+        @Override
+        void recordPut(@NotNull String path, @NotNull Object value) {
+            List<Entry> entries = sharedQueue.get(siblingName);
+            if (entries == null) {
+                entries = new ArrayList<Entry>();
+                sharedQueue.put(siblingName, entries);
+            }
+            entries.add(new Entry(Op.PUT, path, value));
         }
 
-        @Override void recordRemove(@NotNull String path) {
+        @Override
+        void recordRemove(@NotNull String path) {
             logger.log(Level.FINE, "[grim-config-updater] cross-file REMOVE op for '"
                     + path + "' on " + siblingName
                     + " is not yet supported; expected the bundled default to drop the key");
         }
 
-        @Override @NotNull Map<String, Object> finalState() {
+        @Override
+        @NotNull Map<String, Object> finalState() {
             // Sibling logs flush via the shared queue, not finalState().
-            return Map.of();
+            return Collections.emptyMap();
         }
     }
 }

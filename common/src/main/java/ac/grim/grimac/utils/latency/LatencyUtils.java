@@ -91,7 +91,7 @@ public class LatencyUtils {
                 } catch (Exception e) {
                     LogUtil.error("An error has occurred when running transactions for player: " + player.user.getName(), e);
                     // Kick the player SO PEOPLE ACTUALLY REPORT PROBLEMS AND KNOW WHEN THEY HAPPEN
-                    if (CommonGrimArguments.KICK_ON_TRANSACTION_ERRORS.value()) {
+                    if (Boolean.TRUE.equals(CommonGrimArguments.KICK_ON_TRANSACTION_ERRORS.value())) {
                         player.disconnect(MessageUtil.miniMessage(MessageUtil.replacePlaceholders(player, GrimAPI.INSTANCE.getConfigManager().getDisconnectPacketError())));
                     }
                 }

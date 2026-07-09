@@ -71,12 +71,46 @@ public class MultiInteractB extends Check implements PostPredictionCheck {
         flags.clear();
     }
 
-    private record FlagData(
-            double posX,
-            double posY,
-            double posZ,
-            double lastPosX,
-            double lastPosY,
-            double lastPosZ) {
+    private static final class FlagData {
+        private final double posX;
+        private final double posY;
+        private final double posZ;
+        private final double lastPosX;
+        private final double lastPosY;
+        private final double lastPosZ;
+
+        private FlagData(double posX, double posY, double posZ,
+                         double lastPosX, double lastPosY, double lastPosZ) {
+            this.posX = posX;
+            this.posY = posY;
+            this.posZ = posZ;
+            this.lastPosX = lastPosX;
+            this.lastPosY = lastPosY;
+            this.lastPosZ = lastPosZ;
+        }
+
+        public double posX() {
+            return posX;
+        }
+
+        public double posY() {
+            return posY;
+        }
+
+        public double posZ() {
+            return posZ;
+        }
+
+        public double lastPosX() {
+            return lastPosX;
+        }
+
+        public double lastPosY() {
+            return lastPosY;
+        }
+
+        public double lastPosZ() {
+            return lastPosZ;
+        }
     }
 }

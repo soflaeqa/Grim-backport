@@ -19,37 +19,51 @@ public class PacketChangeGameState extends Check implements PacketCheck {
     @Override
     public void onPacketSend(final PacketSendEvent event) {
         if (event.getPacketType() != PacketType.Play.Server.CHANGE_GAME_STATE) return;
-        WrapperPlayServerChangeGameState packet = new WrapperPlayServerChangeGameState(event);
+        final WrapperPlayServerChangeGameState packet = new WrapperPlayServerChangeGameState(event);
 
         switch (packet.getReason()) {
-            case CHANGE_GAME_MODE -> {
+            case CHANGE_GAME_MODE:
                 player.sendTransaction();
 
-                player.latencyUtils.addRealTimeTask(player.lastTransactionSent.get(), () -> {
-                    // Bukkit's gamemode order is unreliable, so go from int -> packetevents -> bukkit
-                    GameMode previous = player.gamemode;
-                    int gamemode = (int) packet.getValue();
+                player.latencyUtils.addRealTimeTask(player.lastTransactionSent.get(), new Runnable() {
+                    @Override
+                    public void run() {
+                        // Bukkit's gamemode order is unreliable, so go from int -> packetevents -> bukkit
+                        GameMode previous = player.gamemode;
+                        int gamemode = (int) packet.getValue();
 
-                    // Some plugins send invalid values such as -1, this is what the client does
-                    if (gamemode < 0 || gamemode >= GameMode.values().length) {
-                        player.gamemode = GameMode.SURVIVAL;
-                    } else {
-                        player.gamemode = GameMode.values()[gamemode];
-                    }
+                        // Some plugins send invalid values such as -1, this is what the client does
+                        if (gamemode < 0 || gamemode >= GameMode.values().length) {
+                            player.gamemode = GameMode.SURVIVAL;
+                        } else {
+                            player.gamemode = GameMode.values()[gamemode];
+                        }
 
-                    if (previous == GameMode.SPECTATOR && player.gamemode != GameMode.SPECTATOR) {
-                        GrimAPI.INSTANCE.getSpectateManager().handlePlayerStopSpectating(player.uuid);
+                        if (previous == GameMode.SPECTATOR && player.gamemode != GameMode.SPECTATOR) {
+                            GrimAPI.INSTANCE.getSpectateManager().handlePlayerStopSpectating(player.uuid);
+                        }
                     }
                 });
-            }
+                break;
 
-            case ENABLE_RESPAWN_SCREEN -> {
+            case ENABLE_RESPAWN_SCREEN:
                 if (player.getClientVersion().isOlderThan(ClientVersion.V_1_15)
-                        || event.getServerVersion().isOlderThan(ServerVersion.V_1_15)) return;
+                        || event.getServerVersion().isOlderThan(ServerVersion.V_1_15)) {
+                    return;
+                }
+
                 player.sendTransaction();
                 final boolean enabled = packet.getValue() == 0f;
-                player.addRealTimeTaskNow(() -> player.packetStateData.showsDeathScreen = enabled);
-            }
+                player.addRealTimeTaskNow(new Runnable() {
+                    @Override
+                    public void run() {
+                        player.packetStateData.showsDeathScreen = enabled;
+                    }
+                });
+                break;
+
+            default:
+                break;
         }
     }
 }

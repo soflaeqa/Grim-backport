@@ -23,7 +23,17 @@ public class CommandUtils {
         return new SenderSuggestionProvider(Collections.unmodifiableList(suggestions));
     }
 
-    private record SenderSuggestionProvider(List<Suggestion> suggestions) implements SuggestionProvider<Sender> {
+    private static final class SenderSuggestionProvider implements SuggestionProvider<Sender> {
+        private final List<Suggestion> suggestions;
+
+        private SenderSuggestionProvider(List<Suggestion> suggestions) {
+            this.suggestions = suggestions;
+        }
+
+        public List<Suggestion> suggestions() {
+            return suggestions;
+        }
+
         @Override
         public @NotNull CompletableFuture<? extends @NotNull Iterable<? extends @NotNull Suggestion>> suggestionsFuture(@NotNull CommandContext context, @NotNull CommandInput input) {
             return CompletableFuture.completedFuture(suggestions);

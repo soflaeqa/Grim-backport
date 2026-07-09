@@ -40,16 +40,20 @@ public class PacketEntityAction extends PacketListenerAbstract {
                     player.isSprinting = true;
                     player.vehicleData.camelSprintingState = SprintingState.STARTED;
                     break;
+
                 case STOP_SPRINTING:
                     player.isSprinting = false;
                     player.vehicleData.camelSprintingState = SprintingState.STOPPED;
                     break;
+
                 case START_SNEAKING:
                     player.isSneaking = true;
                     break;
+
                 case STOP_SNEAKING:
                     player.isSneaking = false;
                     break;
+
                 case START_FLYING_WITH_ELYTRA:
                     if (PacketEvents.getAPI().getServerManager().getVersion().isOlderThan(ServerVersion.V_1_9)) return;
 
@@ -87,12 +91,18 @@ public class PacketEntityAction extends PacketListenerAbstract {
                         player.onPacketCancel();
                     }
                     break;
+
                 case START_JUMPING_WITH_HORSE:
                     PacketEntity riding = player.compensatedEntities.self.getRiding();
-                    if (riding instanceof JumpableEntity jumpable) {
+                    if (riding instanceof JumpableEntity) {
+                        JumpableEntity jumpable = (JumpableEntity) riding;
+
                         if (player.vehicleData.pendingJumps.size() >= 20) return; // discard
                         player.vehicleData.pendingJumps.add(new IntToObjectPair<>(action.getJumpBoost(), jumpable));
                     }
+                    break;
+
+                default:
                     break;
             }
         }

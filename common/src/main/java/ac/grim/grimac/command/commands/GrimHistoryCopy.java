@@ -131,7 +131,10 @@ public class GrimHistoryCopy implements BuildableCommand {
     }
 
     private static void flatten(Component c, StringBuilder sb) {
-        if (c instanceof net.kyori.adventure.text.TextComponent tc) sb.append(tc.content());
+        if (c instanceof net.kyori.adventure.text.TextComponent) {
+            net.kyori.adventure.text.TextComponent tc = (net.kyori.adventure.text.TextComponent) c;
+            sb.append(tc.content());
+        }
         for (Component child : c.children()) flatten(child, sb);
     }
 }

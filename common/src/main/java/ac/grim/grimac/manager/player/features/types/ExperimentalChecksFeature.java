@@ -14,9 +14,15 @@ public class ExperimentalChecksFeature implements GrimFeature {
     @Override
     public void setState(GrimPlayer player, ConfigManager config, FeatureState state) {
         switch (state) {
-            case ENABLED -> player.setExperimentalChecks(true);
-            case DISABLED -> player.setExperimentalChecks(false);
-            default -> player.setExperimentalChecks(isEnabledInConfig(player, config));
+            case ENABLED:
+                player.setExperimentalChecks(true);
+                break;
+            case DISABLED:
+                player.setExperimentalChecks(false);
+                break;
+            default:
+                player.setExperimentalChecks(isEnabledInConfig(player, config));
+                break;
         }
     }
 

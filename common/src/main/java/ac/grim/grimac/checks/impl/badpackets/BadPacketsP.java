@@ -41,15 +41,23 @@ public class BadPacketsP extends Check implements PacketCheck {
             WindowClickType clickType = wrapper.getWindowClickType();
             int button = wrapper.getButton();
 
-            // TODO: Adjust for containers
-            boolean flag = switch (clickType) {
-                case PICKUP, QUICK_MOVE, CLONE -> button > 2 || button < 0;
-                case SWAP -> (button > 8 || button < 0) && button != 40;
-                case THROW -> button != 0 && button != 1;
-                case QUICK_CRAFT -> button == 3 || button == 7 || button > 10 || button < 0;
-                case PICKUP_ALL -> button != 0;
-                case UNKNOWN -> true;
-            };
+            boolean flag;
+
+            switch (clickType) {
+                case PICKUP:
+                case QUICK_MOVE:
+                case CLONE:
+                    flag = button > 2 || button < 0;
+                    break;
+
+                case THROW:
+                    flag = button > 1 || button < 0;
+                    break;
+
+                default:
+                    flag = false;
+                    break;
+            }
 
             // Allowing this to false flag to debug and find issues faster
             if (flag) {

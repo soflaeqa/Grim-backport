@@ -17,7 +17,17 @@ public class EntityTypeTags {
             EntityTypes.ENDER_DRAGON
     );
 
-    public record EntityTag(EntityType... tags) {
+    public static final class EntityTag {
+        private final EntityType[] tags;
+
+        public EntityTag(EntityType... tags) {
+            this.tags = tags;
+        }
+
+        public EntityType[] tags() {
+            return tags;
+        }
+
         public boolean anyOf(EntityType tested) {
             for (EntityType type : tags) {
                 if (tested.isInstanceOf(type)) return true;

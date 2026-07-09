@@ -20,14 +20,7 @@ import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.TreeMap;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
@@ -47,21 +40,87 @@ public final class HistoryComponentRenderer {
             + "&f%bucket_start%–%bucket_end%&b:%bucket_hover_entries%'>"
             + "&7- %checks_list% &8(&b%offset%&8)</hover>";
 
-    private record TemplateValue(@Nullable String raw, @Nullable Component component) {
+    private static final class TemplateValue {
+        private final @Nullable String raw;
+        private final @Nullable Component component;
+
+        private TemplateValue(@Nullable String raw, @Nullable Component component) {
+            this.raw = raw;
+            this.component = component;
+        }
+
         static TemplateValue raw(@Nullable String value) {
-            return new TemplateValue(value == null ? "" : value, null);
+            return new TemplateValue(value, null);
         }
 
         static TemplateValue text(@Nullable String value) {
             return new TemplateValue(null, Component.text(value == null ? "" : value));
         }
 
-        static TemplateValue component(@Nullable Component component) {
-            return new TemplateValue(null, component == null ? Component.empty() : component);
+        static TemplateValue component(@Nullable Component value) {
+            return new TemplateValue(null, value);
+        }
+
+        public @Nullable String raw() {
+            return raw;
+        }
+
+        public @Nullable Component component() {
+            return component;
         }
     }
 
-    private record RenderedTemplate(Component component, String raw) {}
+    private static <T> List<T> listOf(T value) {
+        return Collections.singletonList(value);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <K, V> Map<K, V> mapOf(Object... keyValues) {
+        Map<K, V> map = new LinkedHashMap<>();
+
+        if (keyValues.length % 2 != 0) {
+            throw new IllegalArgumentException("mapOf requires an even number of arguments");
+        }
+
+        for (int i = 0; i < keyValues.length; i += 2) {
+            map.put((K) keyValues[i], (V) keyValues[i + 1]);
+        }
+
+        return map;
+    }
+
+    private static <K, V> Map.Entry<K, V> entry(K key, V value) {
+        return new AbstractMap.SimpleImmutableEntry<>(key, value);
+    }
+
+    @SafeVarargs
+    private static <K, V> Map<K, V> mapOfEntries(Map.Entry<? extends K, ? extends V>... entries) {
+        Map<K, V> map = new LinkedHashMap<>();
+
+        for (Map.Entry<? extends K, ? extends V> entry : entries) {
+            map.put(entry.getKey(), entry.getValue());
+        }
+
+        return map;
+    }
+
+    private static final class RenderedTemplate {
+        private final Component component;
+        private final String raw;
+
+        private RenderedTemplate(Component component, String raw) {
+            this.component = component;
+            this.raw = raw;
+        }
+
+        public Component component() {
+            return component;
+        }
+
+        public String raw() {
+            return raw;
+        }
+    }
 
     /**
      * Session-list view. {@code page} is 1-indexed; {@code maxPages} ≥ 1.
@@ -82,9 +141,9 @@ public final class HistoryComponentRenderer {
         ConfigManager cfg = GrimAPI.INSTANCE.getConfigManager().getConfig();
         String safePlayer = mmSafe(playerDisplayName);
         if (result.items().isEmpty()) {
-            return List.of(parse(sender, cfg, "grim-history-no-sessions",
+            return listOf(parse(sender, cfg, "grim-history-no-sessions",
                     "%prefix% &7No session history for &f%player%&7.",
-                    Map.of("player", TemplateValue.raw(safePlayer))).component());
+                    mapOf("player", TemplateValue.raw(safePlayer))).component());
         }
         List<Component> out = new ArrayList<>(result.items().size() + 1);
         // Emit both %max_pages% (new) and %maxPages% (pre-cutover spelling) so
@@ -93,7 +152,7 @@ public final class HistoryComponentRenderer {
         String maxPagesStr = Integer.toString(Math.max(1, maxPages));
         out.add(parse(sender, cfg, "grim-history-header",
                 "%prefix% &bShowing session history for &f%player% &8[&f%page%&7/&f%max_pages%&8]",
-                Map.of(
+                mapOf(
                         "player", TemplateValue.raw(safePlayer),
                         "page", TemplateValue.raw(Integer.toString(page)),
                         "max_pages", TemplateValue.raw(maxPagesStr),
@@ -122,21 +181,21 @@ public final class HistoryComponentRenderer {
                 : "";
         String detailCommand = "/grim history player " + playerDisplayName + " session " + s.sessionOrdinal();
         RenderedTemplate rendered = parse(sender, cfg, "grim-history-session", SESSION_ROW_FALLBACK,
-                Map.ofEntries(
+                mapOfEntries(
                         // Only sanitize untrusted leaves; keep operator-configured fragments intact.
-                        Map.entry("player", TemplateValue.raw(mmSafe(playerDisplayName))),
-                        Map.entry("grim_version", TemplateValue.raw(nullToUnknown(s.grimVersion()))),
-                        Map.entry("server_name", TemplateValue.raw(nullToUnknown(s.serverName()))),
-                        Map.entry("client_version", TemplateValue.raw(clientVersionDisplay(s.clientVersion()))),
-                        Map.entry("client_brand", TemplateValue.raw(mmSafe(nullToUnknown(s.clientBrand())))),
-                        Map.entry("ordinal", TemplateValue.raw(Integer.toString(s.sessionOrdinal()))),
-                        Map.entry("duration", TemplateValue.raw(durationText)),
-                        Map.entry("violations", TemplateValue.raw(Long.toString(s.violationCount()))),
-                        Map.entry("unique_checks", TemplateValue.raw(Integer.toString(s.uniqueCheckCount()))),
-                        Map.entry("crashed_marker", TemplateValue.raw(crashedMarker)),
-                        Map.entry("timeago", TemplateValue.raw(formatDuration(elapsedNow))),
-                        Map.entry("session_uuid", TemplateValue.text(s.sessionId().toString())),
-                        Map.entry("detail_command", TemplateValue.text(detailCommand))));
+                        entry("player", TemplateValue.raw(mmSafe(playerDisplayName))),
+                        entry("grim_version", TemplateValue.raw(nullToUnknown(s.grimVersion()))),
+                        entry("server_name", TemplateValue.raw(nullToUnknown(s.serverName()))),
+                        entry("client_version", TemplateValue.raw(clientVersionDisplay(s.clientVersion()))),
+                        entry("client_brand", TemplateValue.raw(mmSafe(nullToUnknown(s.clientBrand())))),
+                        entry("ordinal", TemplateValue.raw(Integer.toString(s.sessionOrdinal()))),
+                        entry("duration", TemplateValue.raw(durationText)),
+                        entry("violations", TemplateValue.raw(Long.toString(s.violationCount()))),
+                        entry("unique_checks", TemplateValue.raw(Integer.toString(s.uniqueCheckCount()))),
+                        entry("crashed_marker", TemplateValue.raw(crashedMarker)),
+                        entry("timeago", TemplateValue.raw(formatDuration(elapsedNow))),
+                        entry("session_uuid", TemplateValue.text(s.sessionId().toString())),
+                        entry("detail_command", TemplateValue.text(detailCommand))));
         Component line = rendered.component();
         if (!hasInlineHover(rendered.raw())) {
             line = line.hoverEvent(HoverEvent.showText(sessionHover(sender, detailCommand, s.sessionId().toString())));
@@ -179,21 +238,21 @@ public final class HistoryComponentRenderer {
         int maxPages = Math.max(1, (totalRows + perPage - 1) / perPage);
         int page = pageArg == null ? maxPages : Math.max(1, Math.min(pageArg, maxPages));
 
-        Map<String, TemplateValue> metaVars = Map.ofEntries(
+        Map<String, TemplateValue> metaVars = mapOfEntries(
                 // Only sanitize untrusted leaves; keep operator-configured fragments intact.
-                Map.entry("player", TemplateValue.raw(mmSafe(playerDisplayName))),
-                Map.entry("ordinal", TemplateValue.raw(Integer.toString(d.sessionOrdinal()))),
-                Map.entry("grim_version", TemplateValue.raw(nullToUnknown(d.grimVersion()))),
-                Map.entry("server_name", TemplateValue.raw(nullToUnknown(d.serverName()))),
-                Map.entry("client_version", TemplateValue.raw(clientVersionDisplay(d.clientVersion()))),
-                Map.entry("client_brand", TemplateValue.raw(mmSafe(nullToUnknown(d.clientBrand())))),
-                Map.entry("duration", TemplateValue.raw(durationText)),
-                Map.entry("timeago", TemplateValue.raw(formatDuration(elapsedNow))),
-                Map.entry("violations", TemplateValue.raw(Integer.toString(d.violations().size()))),
-                Map.entry("unique_checks", TemplateValue.raw(Integer.toString(d.uniqueCheckCount()))),
-                Map.entry("bucket_size", TemplateValue.raw(formatDuration(d.bucketSizeMs()))),
-                Map.entry("page", TemplateValue.raw(Integer.toString(page))),
-                Map.entry("max_pages", TemplateValue.raw(Integer.toString(maxPages))));
+                entry("player", TemplateValue.raw(mmSafe(playerDisplayName))),
+                entry("ordinal", TemplateValue.raw(Integer.toString(d.sessionOrdinal()))),
+                entry("grim_version", TemplateValue.raw(nullToUnknown(d.grimVersion()))),
+                entry("server_name", TemplateValue.raw(nullToUnknown(d.serverName()))),
+                entry("client_version", TemplateValue.raw(clientVersionDisplay(d.clientVersion()))),
+                entry("client_brand", TemplateValue.raw(mmSafe(nullToUnknown(d.clientBrand())))),
+                entry("duration", TemplateValue.raw(durationText)),
+                entry("timeago", TemplateValue.raw(formatDuration(elapsedNow))),
+                entry("violations", TemplateValue.raw(Integer.toString(d.violations().size()))),
+                entry("unique_checks", TemplateValue.raw(Integer.toString(d.uniqueCheckCount()))),
+                entry("bucket_size", TemplateValue.raw(formatDuration(d.bucketSizeMs()))),
+                entry("page", TemplateValue.raw(Integer.toString(page))),
+                entry("max_pages", TemplateValue.raw(Integer.toString(maxPages))));
         out.add(parse(sender, cfg, "grim-history-detail-header",
                 "%prefix% &bShowing &f%player%&b's session &f%ordinal%&b details:", metaVars).component());
         out.add(parse(sender, cfg, "grim-history-detail-meta1",
@@ -207,7 +266,7 @@ public final class HistoryComponentRenderer {
                 metaVars).component());
 
         if (d.violations().isEmpty()) {
-            out.add(parse(sender, cfg, "grim-history-detail-empty", "&7- (none)", Map.of()).component());
+            out.add(parse(sender, cfg, "grim-history-detail-empty", "&7- (none)", mapOf()).component());
             return out;
         }
 
@@ -239,7 +298,7 @@ public final class HistoryComponentRenderer {
         String bucketStart = formatDuration(bucket.bucketStartOffsetMs());
         String bucketEnd = formatDuration(bucket.bucketStartOffsetMs() + d.bucketSizeMs());
         RenderedTemplate rendered = parse(sender, cfg, "grim-history-detail-group", GROUP_ROW_FALLBACK,
-                Map.of(
+                mapOf(
                         "checks_list", TemplateValue.raw(checksList.toString()),
                         "offset", TemplateValue.raw(bucketStart),
                         "bucket_start", TemplateValue.raw(bucketStart),
@@ -258,18 +317,18 @@ public final class HistoryComponentRenderer {
         Component body = Component.empty();
         for (ViolationEntry v : d.violations()) {
             if (v.offsetFromSessionStartMs() < bucketStart || v.offsetFromSessionStartMs() >= bucketEnd) continue;
-            Component description = v.description().isBlank()
+            Component description = v.description().trim().isEmpty()
                     ? Component.empty()
                     : parse(sender, cfg, "grim-history-hover-description", " — &f%description%",
-                            Map.of("description", TemplateValue.text(v.description()))).component();
+                            mapOf("description", TemplateValue.text(v.description()))).component();
             String verboseText = v.verbose() == null ? "" : v.verbose();
-            Component verboseComponent = verbose && !verboseText.isBlank()
+            Component verboseComponent = verbose && !verboseText.trim().isEmpty()
                     ? parse(sender, cfg, "grim-history-detail-group-hover-verbose", " — &7%verbose%",
-                            Map.of("verbose", TemplateValue.text(verboseText))).component()
+                            mapOf("verbose", TemplateValue.text(verboseText))).component()
                     : Component.empty();
             body = body.append(parse(sender, cfg, "grim-history-detail-group-hover-entry",
                     "<newline>&8  %offset% &b%check%%description%%verbose%",
-                    Map.of(
+                    mapOf(
                             "offset", TemplateValue.text(formatDuration(v.offsetFromSessionStartMs())),
                             "check", TemplateValue.text(v.displayName()),
                             "description", TemplateValue.component(description),
@@ -282,7 +341,7 @@ public final class HistoryComponentRenderer {
                                          Component bucketHoverEntries) {
         return parse(sender, cfg, "grim-history-detail-group-hover",
                 "&bViolations in &f%bucket_start%–%bucket_end%&b:%bucket_hover_entries%",
-                Map.of(
+                mapOf(
                         "bucket_start", TemplateValue.text(bucketStart),
                         "bucket_end", TemplateValue.text(bucketEnd),
                         "bucket_hover_entries", TemplateValue.component(bucketHoverEntries))).component();
@@ -293,7 +352,7 @@ public final class HistoryComponentRenderer {
         // Verbose/check metadata can include user or plugin text; render substitutions as plain text.
         RenderedTemplate rendered = parse(sender, cfg, "grim-history-detail-entry",
                 "&7- &f%check% &8(&b%offset%&8)&7 %verbose%",
-                Map.of(
+                mapOf(
                         "check", TemplateValue.raw(mmSafe(v.displayName())),
                         "description", TemplateValue.raw(mmSafe(v.description())),
                         "offset", TemplateValue.raw(formatDuration(v.offsetFromSessionStartMs())),
@@ -304,8 +363,8 @@ public final class HistoryComponentRenderer {
         // flag, because operators scanning a dense list still want the
         // quick "what does this check mean" answer without re-running.
         Component line = rendered.component();
-        boolean hasDescription = !v.description().isBlank();
-        if (!hasInlineHover(rendered.raw()) && (!verboseText.isBlank() || hasDescription)) {
+        boolean hasDescription = !v.description().trim().isEmpty();
+        if (!hasInlineHover(rendered.raw()) && (!verboseText.trim().isEmpty() || hasDescription)) {
             line = line.hoverEvent(HoverEvent.showText(violationHover(sender, cfg, v, verboseText, hasDescription)));
         }
         return line;
@@ -315,15 +374,15 @@ public final class HistoryComponentRenderer {
                                             String verboseText, boolean hasDescription) {
         Component description = hasDescription
                 ? parse(sender, cfg, "grim-history-hover-description", " — &f%description%",
-                        Map.of("description", TemplateValue.text(v.description()))).component()
+                        mapOf("description", TemplateValue.text(v.description()))).component()
                 : Component.empty();
-        Component verbose = !verboseText.isBlank()
+        Component verbose = !verboseText.trim().isEmpty()
                 ? parse(sender, cfg, "grim-history-detail-entry-hover-verbose", "<newline>&7%verbose%",
-                        Map.of("verbose", TemplateValue.text(verboseText))).component()
+                        mapOf("verbose", TemplateValue.text(verboseText))).component()
                 : Component.empty();
         return parse(sender, cfg, "grim-history-detail-entry-hover",
                 "&b%check%%description%<newline>&8@ %offset% — vl %vl%%verbose%",
-                Map.of(
+                mapOf(
                         "check", TemplateValue.text(v.displayName()),
                         "description", TemplateValue.component(description),
                         "offset", TemplateValue.text(formatDuration(v.offsetFromSessionStartMs())),
@@ -336,7 +395,7 @@ public final class HistoryComponentRenderer {
                 "&bSession &7%session_uuid%"
                         + "<newline>&7Click or run &e%detail_command%"
                         + "<newline>&7to view session details.",
-                Map.of(
+                mapOf(
                         "session_uuid", TemplateValue.text(sessionId),
                         "detail_command", TemplateValue.text(detailCommand)));
     }
