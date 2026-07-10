@@ -35,7 +35,13 @@ public class PacketSelfMetadataListener extends PacketListenerAbstract {
             GrimPlayer player = GrimAPI.INSTANCE.getPlayerDataManager().getPlayer(event.getUser());
             if (player == null) return;
 
-            WrapperPlayServerEntityMetadata entityMetadata = new WrapperPlayServerEntityMetadata(event);
+            WrapperPlayServerEntityMetadata entityMetadata;
+            try {
+                entityMetadata = new WrapperPlayServerEntityMetadata(event);
+            } catch (IllegalStateException ignored) {
+                // skip undecodable Via/translated metadata packets
+                return;
+            }
             if (entityMetadata.getEntityId() != player.entityID) return;
 
             List<EntityData<?>> metadata = entityMetadata.getEntityMetadata();
