@@ -4,6 +4,7 @@ import ac.grim.grimac.GrimAPI;
 import ac.grim.grimac.api.event.events.GrimJoinEvent;
 import ac.grim.grimac.api.event.events.GrimQuitEvent;
 import ac.grim.grimac.player.GrimPlayer;
+import ac.grim.grimac.platform.api.player.PlatformPlayer;
 import ac.grim.grimac.utils.reflection.GeyserUtil;
 import com.github.retrooper.packetevents.PacketEvents;
 import com.github.retrooper.packetevents.netty.channel.ChannelHelper;
@@ -126,9 +127,17 @@ public class PlayerDataManager {
         if (uuid == null)
             return; // folia doesn't like null getPlayer()
 
-        GrimAPI.INSTANCE.getAlertManager().handlePlayerQuit(
-                GrimAPI.INSTANCE.getPlatformPlayerFactory().getFromUUID(uuid)
-        );
+        PlatformPlayer platformPlayer = grimPlayer != null ? grimPlayer.platformPlayer : null;
+        if (platformPlayer == null) {
+            try {
+                platformPlayer = GrimAPI.INSTANCE.getPlatformPlayerFactory().getFromUUID(uuid);
+            } catch (RuntimeException ignored) {
+                // The channel may already be gone on synthetic disconnect cleanup
+                // so erm, grim, no need to create platform-player if it already exists
+            }
+        }
+
+        GrimAPI.INSTANCE.getAlertManager().handlePlayerQuit(platformPlayer);
 
         GrimAPI.INSTANCE.getSpectateManager().onQuit(uuid);
 
