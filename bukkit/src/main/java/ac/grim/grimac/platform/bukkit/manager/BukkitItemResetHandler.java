@@ -74,9 +74,17 @@ public class BukkitItemResetHandler implements ItemResetHandler {
                 };
             }
 
+            boolean bukkitHasGetHandRaised;
+            try {
+                Player.class.getMethod("getHandRaised");
+                bukkitHasGetHandRaised = true;
+            } catch (NoSuchMethodException e) {
+                bukkitHasGetHandRaised = false;
+            }
+
             if (legacy) {
                 getItemUsageHand = player -> isUsingItem.test(player) ? InteractionHand.MAIN_HAND : null;
-            } else if (PaperUtils.PAPER && version.isNewerThanOrEquals(ServerVersion.V_1_16_5)) {
+            } else if (PaperUtils.PAPER && version.isNewerThanOrEquals(ServerVersion.V_1_18) && bukkitHasGetHandRaised) {
                 getItemUsageHand = player -> player.isHandRaised()
                         ? player.getHandRaised() == EquipmentSlot.OFF_HAND ? InteractionHand.OFF_HAND : InteractionHand.MAIN_HAND
                         : null;
