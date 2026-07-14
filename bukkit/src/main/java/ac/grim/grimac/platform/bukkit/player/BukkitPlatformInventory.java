@@ -1,6 +1,8 @@
 package ac.grim.grimac.platform.bukkit.player;
 
 import ac.grim.grimac.platform.api.player.PlatformInventory;
+import com.github.retrooper.packetevents.PacketEvents;
+import com.github.retrooper.packetevents.manager.server.ServerVersion;
 import com.github.retrooper.packetevents.protocol.item.ItemStack;
 import io.github.retrooper.packetevents.util.SpigotConversionUtil;
 import lombok.RequiredArgsConstructor;
@@ -9,6 +11,8 @@ import org.jetbrains.annotations.NotNull;
 
 @RequiredArgsConstructor
 public class BukkitPlatformInventory implements PlatformInventory {
+
+    private static final boolean HAS_OFFHAND = PacketEvents.getAPI().getServerManager().getVersion().isNewerThanOrEquals(ServerVersion.V_1_9);
 
     private final @NotNull Player bukkitPlayer;
 
@@ -19,7 +23,9 @@ public class BukkitPlatformInventory implements PlatformInventory {
 
     @Override
     public ItemStack getItemInOffHand() {
-        return SpigotConversionUtil.fromBukkitItemStack(bukkitPlayer.getInventory().getItemInOffHand());
+        return HAS_OFFHAND
+                ? SpigotConversionUtil.fromBukkitItemStack(bukkitPlayer.getInventory().getItemInOffHand())
+                : ItemStack.EMPTY;
     }
 
     @Override
