@@ -78,7 +78,9 @@ dependencies {
         isTransitive = false // messes with guava otherwise
     }
 
-    compileOnly(libs.floodgate.api)
+    compileOnly(variantOf(libs.floodgate.api) { classifier("shaded") }) {
+        isTransitive = false
+    }
     compileOnly(libs.viaversion)
     compileOnly(libs.viabackwards)
     compileOnly(libs.netty)
