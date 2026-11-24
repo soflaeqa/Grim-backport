@@ -157,7 +157,9 @@ public class BlockBreakSpeed {
 
         OptionalInt miningFatigue = player.compensatedEntities.getPotionLevelForSelfPlayer(PotionTypes.MINING_FATIGUE);
 
-        if (miningFatigue.isPresent()) {
+        if (miningFatigue.isPresent() && player.getClientVersion().getProtocolVersion() >= 777) {
+            speedMultiplier *= (float) Math.pow(0.3, miningFatigue.getAsInt() + 1);
+        } else if (miningFatigue.isPresent()) {
             switch (miningFatigue.getAsInt()) {
                 case 0:
                     speedMultiplier *= 0.3f;

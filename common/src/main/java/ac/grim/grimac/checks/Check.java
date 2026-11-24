@@ -266,6 +266,14 @@ public class Check extends GrimProcessor implements AbstractCheck {
                 || packetType == PacketType.Play.Client.RESOURCE_PACK_STATUS;
     }
 
+    public static boolean isPunch(PacketTypeCommon packetType) {
+        return "PUNCH".equals(packetType.getName());
+    }
+
+    public static boolean isAnimation(PacketTypeCommon packetType) {
+        return packetType == PacketType.Play.Client.ANIMATION || isPunch(packetType);
+    }
+
     public boolean isUpdate(PacketTypeCommon packetType) {
         return isFlying(packetType)
                 || packetType == PacketType.Play.Client.CLIENT_TICK_END

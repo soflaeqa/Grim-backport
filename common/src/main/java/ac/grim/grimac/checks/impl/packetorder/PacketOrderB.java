@@ -33,8 +33,7 @@ public class PacketOrderB extends Check implements PacketCheck {
 
     @Override
     public void onPacketReceive(PacketReceiveEvent event) {
-        if (event.getPacketType() == PacketType.Play.Client.ANIMATION
-            && new WrapperPlayClientAnimation(event).getHand() == InteractionHand.MAIN_HAND) {
+        if (isAnimation(event.getPacketType()) && (isPunch(event.getPacketType()) || new WrapperPlayClientAnimation(event).getHand() == InteractionHand.MAIN_HAND)) {
             sentAnimationSinceLastAttack = sentAnimation = true;
             sentAttack = sentSlotSwitch = false;
             return;
@@ -55,7 +54,7 @@ public class PacketOrderB extends Check implements PacketCheck {
 
         if (event.getPacketType() == PacketType.Play.Client.PLAYER_DIGGING) {
             WrapperPlayClientPlayerDigging packet = new WrapperPlayClientPlayerDigging(event);
-            if (packet.getAction() == DiggingAction.STAB) {
+            if (packet.getAction() == DiggingAction.STAB && player.getClientVersion().getProtocolVersion() < 777) {
                 onAttack(event);
                 return;
             }
